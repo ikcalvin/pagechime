@@ -9,14 +9,9 @@ import {
   Clock,
   XCircle,
   RefreshCw,
+  MoreHorizontal,
 } from "lucide-react";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-} from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import api from "@/utils/api";
@@ -28,6 +23,8 @@ type Article = {
   status: "queued" | "processing" | "completed" | "failed";
   created_at: string;
   audio_url?: string;
+  clean_text?: string;
+  image_url?: string;
 };
 
 export function ArticleList() {
@@ -82,61 +79,121 @@ export function ArticleList() {
           </CardContent>
         </Card>
       ) : (
-        articles.map((article) => (
-          <Card key={article.id} className="overflow-hidden">
-            <CardHeader className="pb-2">
-              <div className="flex justify-between items-start">
-                <CardTitle
-                  className="text-lg line-clamp-1"
-                  title={article.title || article.original_url}
-                >
-                  {article.title || "Untitled Article"}
-                </CardTitle>
-                <Badge variant="outline" className="flex items-center gap-1">
-                  {getStatusIcon(article.status)}
-                  <span className="capitalize">{article.status}</span>
-                </Badge>
-              </div>
-              <CardDescription className="line-clamp-1">
-                {article.original_url}
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="flex justify-between items-center mt-2">
-                <span className="text-xs text-muted-foreground">
-                  Added{" "}
-                  {formatDistanceToNow(new Date(article.created_at), {
-                    addSuffix: true,
-                  })}
-                </span>
-                <div className="flex gap-2">
-                  <Button variant="outline" size="sm" asChild>
-                    <a
-                      href={article.original_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      <FileText className="h-4 w-4 mr-1" />
-                      Read
-                    </a>
-                  </Button>
-                  {article.status === "completed" && article.audio_url && (
-                    <Button size="sm" asChild>
-                      <a
-                        href={article.audio_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
+        articles.map((article) => {
+          const domain = new URL(article.original_url).hostname.replace(
+            "www.",
+            ""
+          );
+          const readingTime = Math.max(
+            1,
+            Math.ceil((article.clean_text?.split(/\s+/).length || 0) / 200)
+          );
+
+          return (
+            <Card key={article.id} className="overflow-hidden relative group">
+              <CardContent className="p-0">
+                <div className="flex flex-row">
+                  {/* Left Column: Content */}
+                  <div className="flex-1 p-5 flex flex-col gap-2">
+                    {/* Metadata Row */}
+                    <div className="flex items-center text-xs text-muted-foreground gap-2 mb-1">
+                      <span className="font-medium text-foreground">
+                        {domain}
+                      </span>
+                      <span>•</span>
+                      <span>{readingTime} min read</span>
+                      <span className="ml-auto">
+                        {formatDistanceToNow(new Date(article.created_at), {
+                          addSuffix: true,
+                        })}
+                      </span>
+                    </div>
+
+                    {/* Title */}
+                    <h3 className="font-bold text-xl leading-tight text-foreground">
+                      {article.title || "Untitled Article"}
+                    </h3>
+
+                    {/* Snippet */}
+                    <p className="text-sm text-muted-foreground line-clamp-2 leading-relaxed">
+                      {article.clean_text || article.original_url}
+                    </p>
+
+                    {/* Action Row */}
+                    <div className="flex items-center gap-3 mt-3">
+                      <Badge
+                        variant="secondary"
+                        className="flex items-center gap-1.5 font-normal"
                       >
-                        <Play className="h-4 w-4 mr-1" />
-                        Listen
-                      </a>
-                    </Button>
+                        {getStatusIcon(article.status)}
+                        <span className="capitalize">{article.status}</span>
+                      </Badge>
+
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 px-2 text-muted-foreground hover:text-foreground"
+                          asChild
+                        >
+                          <a
+                            href={article.original_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                          >
+                            <FileText className="h-4 w-4 mr-1.5" />
+                            Read
+                          </a>
+                        </Button>
+
+                        {article.status === "completed" &&
+                          article.audio_url && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 px-2 text-muted-foreground hover:text-foreground"
+                              asChild
+                            >
+                              <a
+                                href={article.audio_url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                              >
+                                <Play className="h-4 w-4 mr-1.5" />
+                                Listen
+                              </a>
+                            </Button>
+                          )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Right Column: Image (Thumbnail) */}
+                  {/* Placeholder for future image implementation */}
+                  {article.image_url && (
+                    <div className="w-48 h-auto relative hidden sm:block">
+                      {/* Use a real image component here in the future */}
+                      <img
+                        src={article.image_url}
+                        alt={article.title}
+                        className="absolute inset-0 w-full h-full object-cover"
+                      />
+                    </div>
                   )}
                 </div>
-              </div>
-            </CardContent>
-          </Card>
-        ))
+
+                {/* Options Menu (Placeholder) */}
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="absolute top-2 right-2 h-8 w-8 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity"
+                >
+                  <MoreHorizontal className="h-5 w-5" />
+                </Button>
+              </CardContent>
+            </Card>
+          );
+        })
       )}
     </div>
   );
