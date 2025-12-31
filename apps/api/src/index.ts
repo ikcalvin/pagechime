@@ -15,14 +15,33 @@ app.use(cors());
 app.use(express.json());
 
 // Mock Auth Middleware
-const requireAuth = (req: express.Request, res: express.Response, next: express.NextFunction) => {
-    const userId = req.headers["x-user-id"] as string;
-    if (!userId) {
-        return res.status(401).json({ error: "Unauthorized: Missing x-user-id header" });
+// Real Auth Middleware
+const requireAuth = async (req: express.Request, res: express.Response, next: express.NextFunction) => {
+    const authHeader = req.headers.authorization;
+    if (!authHeader) {
+        return res.status(401).json({ error: "Unauthorized: Missing Authorization header" });
     }
-    // @ts-ignore
-    req.user = { id: userId };
-    next();
+
+    const token = authHeader.split(" ")[1];
+    if (!token) {
+        return res.status(401).json({ error: "Unauthorized: Malformed Authorization header" });
+    }
+
+    try {
+        const { data: { user }, error } = await supabase.auth.getUser(token);
+
+        if (error || !user) {
+            console.error("Auth Error:", error);
+            return res.status(401).json({ error: "Unauthorized: Invalid token" });
+        }
+
+        // @ts-ignore
+        req.user = user;
+        next();
+    } catch (err) {
+        console.error("Auth Middleware Error:", err);
+        return res.status(500).json({ error: "Internal Server Error" });
+    }
 };
 
 // Routes

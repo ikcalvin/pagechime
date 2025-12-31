@@ -7,7 +7,17 @@ import { Readability } from "@mozilla/readability";
 import { PutObjectCommand } from "@aws-sdk/client-s3";
 
 export const processArticle = inngest.createFunction(
-    { id: "process-article", concurrency: 5 },
+    {
+        id: "process-article",
+        concurrency: 5,
+        onFailure: async ({ event, step }) => {
+            const { articleId } = event.data.event.data;
+            await supabase
+                .from("articles")
+                .update({ status: "failed" })
+                .eq("id", articleId);
+        },
+    },
     { event: "app/article.created" },
     async ({ event, step }) => {
         const { articleId, url, userId } = event.data;
