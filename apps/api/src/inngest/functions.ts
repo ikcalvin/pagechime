@@ -35,6 +35,7 @@ export const processArticle = inngest.createFunction(
 
             // Extract OG Image
             const ogImage = dom.window.document.querySelector('meta[property="og:image"]')?.getAttribute('content');
+            //console.log("Extracted OG Image:", ogImage, "for URL:", url); // Debug log
 
             if (!article || !article.textContent) {
                 throw new Error("Failed to parse article content");

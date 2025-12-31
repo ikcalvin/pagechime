@@ -180,12 +180,15 @@ export function ArticleList() {
                   {/* Right Column: Image (Thumbnail) */}
                   {/* Placeholder for future image implementation */}
                   {article.image_url && (
-                    <div className="w-48 h-auto relative hidden sm:block">
+                    <div className="w-48 relative shrink-0">
                       {/* Use a real image component here in the future */}
                       <img
                         src={article.image_url}
                         alt={article.title}
                         className="absolute inset-0 w-full h-full object-cover"
+                        onError={(e) => {
+                          e.currentTarget.style.display = "none";
+                        }}
                       />
                     </div>
                   )}
