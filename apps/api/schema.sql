@@ -17,6 +17,7 @@ create table if not exists articles (
   original_url text not null,
   title text,
   clean_text text,
+  image_url text,
   audio_url text,
   status article_status default 'queued',
   created_at timestamptz default now()

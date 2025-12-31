@@ -33,6 +33,9 @@ export const processArticle = inngest.createFunction(
             const reader = new Readability(dom.window.document);
             const article = reader.parse();
 
+            // Extract OG Image
+            const ogImage = dom.window.document.querySelector('meta[property="og:image"]')?.getAttribute('content');
+
             if (!article || !article.textContent) {
                 throw new Error("Failed to parse article content");
             }
@@ -42,6 +45,7 @@ export const processArticle = inngest.createFunction(
                 .update({
                     title: article.title,
                     clean_text: article.textContent,
+                    image_url: ogImage, // Save image URL
                     status: "processing",
                 })
                 .eq("id", articleId);
