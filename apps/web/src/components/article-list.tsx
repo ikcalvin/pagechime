@@ -40,7 +40,8 @@ export function ArticleList() {
       if (articles.length === 0) setLoading(true);
 
       const response = await api.get("/articles");
-      setArticles(response.data.data || []); // Adjust based on API response structure
+      setArticles(response.data || []);
+      0; // Adjust based on API response structure
     } catch (error) {
       console.error("Failed to fetch articles:", error);
     } finally {
