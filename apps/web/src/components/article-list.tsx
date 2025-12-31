@@ -99,13 +99,36 @@ export function ArticleList() {
           );
 
           return (
-            <Card key={article.id} className="overflow-hidden relative group">
+            <Card
+              key={article.id}
+              className="overflow-hidden relative group py-0"
+            >
               <CardContent className="p-0">
                 <div className="flex flex-row">
-                  {/* Left Column: Content */}
+                  {/* Left Column: Image (Thumbnail) */}
+                  {article.image_url && (
+                    <div className="w-48 relative shrink-0">
+                      {/* Use a real image component here in the future */}
+                      <img
+                        src={article.image_url}
+                        alt={article.title}
+                        className="absolute inset-0 w-full h-full object-cover"
+                        onError={(e) => {
+                          e.currentTarget.style.display = "none";
+                        }}
+                      />
+                    </div>
+                  )}
+
+                  {/* Right Column: Content */}
                   <div className="flex-1 p-5 flex flex-col gap-2">
+                    {/* Title */}
+                    <h3 className="font-bold text-xl leading-tight text-foreground">
+                      {article.title || "Untitled Article"}
+                    </h3>
+
                     {/* Metadata Row */}
-                    <div className="flex items-center text-xs text-muted-foreground gap-2 mb-1">
+                    <div className="flex items-center text-xs text-muted-foreground gap-2">
                       <span className="font-medium text-foreground">
                         {domain}
                       </span>
@@ -117,11 +140,6 @@ export function ArticleList() {
                         })}
                       </span>
                     </div>
-
-                    {/* Title */}
-                    <h3 className="font-bold text-xl leading-tight text-foreground">
-                      {article.title || "Untitled Article"}
-                    </h3>
 
                     {/* Snippet */}
                     <p className="text-sm text-muted-foreground line-clamp-2 leading-relaxed">
@@ -176,22 +194,6 @@ export function ArticleList() {
                       </div>
                     </div>
                   </div>
-
-                  {/* Right Column: Image (Thumbnail) */}
-                  {/* Placeholder for future image implementation */}
-                  {article.image_url && (
-                    <div className="w-48 relative shrink-0">
-                      {/* Use a real image component here in the future */}
-                      <img
-                        src={article.image_url}
-                        alt={article.title}
-                        className="absolute inset-0 w-full h-full object-cover"
-                        onError={(e) => {
-                          e.currentTarget.style.display = "none";
-                        }}
-                      />
-                    </div>
-                  )}
                 </div>
 
                 {/* Options Menu */}
