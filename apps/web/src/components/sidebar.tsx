@@ -17,10 +17,10 @@ import { Separator } from "@/components/ui/separator";
 
 const sidebarItems = [
   { icon: Home, label: "Home", href: "/" },
-  { icon: Heart, label: "Liked", href: "/liked" },
+  // { icon: Heart, label: "Liked", href: "/liked" },
   { icon: Archive, label: "Archive", href: "/archive" },
-  { icon: Video, label: "Videos", href: "/videos" },
-  { icon: FileText, label: "Notes", href: "/notes" },
+  // { icon: Video, label: "Videos", href: "/videos" },
+  // { icon: FileText, label: "Notes", href: "/notes" },
 ];
 
 export function Sidebar() {
@@ -62,9 +62,6 @@ export function Sidebar() {
           >
             <Tag className="h-5 w-5" />
             Tags
-            <span className="ml-auto bg-blue-500 text-white text-[10px] px-1.5 py-0.5 rounded-full font-bold uppercase tracking-wider">
-              New
-            </span>
           </Button>
         </div>
       </nav>
