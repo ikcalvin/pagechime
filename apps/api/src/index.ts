@@ -86,6 +86,35 @@ app.post("/api/articles", requireAuth, async (req, res) => {
     }
 });
 
+// Update article (Archive/Delete)
+app.put("/api/articles/:id", requireAuth, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { is_archived, is_deleted } = req.body;
+        // @ts-ignore
+        const userId = req.user.id;
+
+        const updates: any = {};
+        if (typeof is_archived === 'boolean') updates.is_archived = is_archived;
+        if (typeof is_deleted === 'boolean') updates.is_deleted = is_deleted;
+
+        const { data, error } = await supabase
+            .from("articles")
+            .update(updates)
+            .eq("id", id)
+            .eq("user_id", userId)
+            .select()
+            .single();
+
+        if (error) throw error;
+
+        res.json(data);
+    } catch (err: any) {
+        console.error("Error updating article:", err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
 app.get("/api/articles", requireAuth, async (req, res) => {
     try {
         // @ts-ignore
@@ -93,15 +122,110 @@ app.get("/api/articles", requireAuth, async (req, res) => {
 
         const { data, error } = await supabase
             .from("articles")
-            .select("*")
+            .select("*, tags(*)")
             .eq("user_id", userId)
+            .eq("is_deleted", false) // Default to not showing deleted
             .order("created_at", { ascending: false });
 
         if (error) throw error;
 
+        // Transform data if necessary, though Supabase returns tags as an array of objects which is good
         res.json(data);
     } catch (err: any) {
         console.error("Error fetching articles:", err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Tags API
+
+// Get all tags
+app.get("/api/tags", requireAuth, async (req, res) => {
+    try {
+        // @ts-ignore
+        const userId = req.user.id;
+
+        const { data, error } = await supabase
+            .from("tags")
+            .select("*")
+            .eq("user_id", userId)
+            .order("name", { ascending: true });
+
+        if (error) throw error;
+        res.json(data);
+    } catch (err: any) {
+        console.error("Error fetching tags:", err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Create tag
+app.post("/api/tags", requireAuth, async (req, res) => {
+    try {
+        const { name } = req.body;
+        // @ts-ignore
+        const userId = req.user.id;
+
+        if (!name) return res.status(400).json({ error: "Tag name required" });
+
+        const { data, error } = await supabase
+            .from("tags")
+            .insert({ name, user_id: userId })
+            .select()
+            .single();
+
+        if (error) throw error;
+        res.status(201).json(data);
+    } catch (err: any) {
+        // handle duplicate key error gracefully
+        if (err.code === '23505') {
+            return res.status(409).json({ error: "Tag already exists" });
+        }
+        console.error("Error creating tag:", err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Add tag to article
+app.post("/api/articles/:id/tags", requireAuth, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { tagId } = req.body;
+        // @ts-ignore
+        const userId = req.user.id;
+
+        // Verify article ownership first (optional but good practice)
+        // For simplicity relying on RLS or Supabase Constraints, but here we do simple insert
+
+        const { error } = await supabase
+            .from("article_tags")
+            .insert({ article_id: id, tag_id: tagId });
+
+        if (error) throw error;
+        res.status(201).json({ success: true });
+    } catch (err: any) {
+        console.error("Error adding tag to article:", err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Remove tag from article
+app.delete("/api/articles/:id/tags/:tagId", requireAuth, async (req, res) => {
+    try {
+        const { id, tagId } = req.params;
+        // @ts-ignore
+        const userId = req.user.id;
+
+        const { error } = await supabase
+            .from("article_tags")
+            .delete()
+            .eq("article_id", id)
+            .eq("tag_id", tagId);
+
+        if (error) throw error;
+        res.json({ success: true });
+    } catch (err: any) {
+        console.error("Error removing tag from article:", err);
         res.status(500).json({ error: err.message });
     }
 });
