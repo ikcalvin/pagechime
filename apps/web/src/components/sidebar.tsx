@@ -70,7 +70,14 @@ export function Sidebar() {
                     )}
                   >
                     <Folder className="h-4 w-4" />
-                    <span className="truncate">{collection.name}</span>
+                    <span className="truncate flex-1 text-left">
+                      {collection.name}
+                    </span>
+                    {collection.articles?.[0]?.count ? (
+                      <span className="text-xs text-muted-foreground ml-2">
+                        {collection.articles[0].count}
+                      </span>
+                    ) : null}
                   </Button>
                 </Link>
               );

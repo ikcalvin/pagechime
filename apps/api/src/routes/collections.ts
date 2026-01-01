@@ -11,8 +11,9 @@ router.get("/", async (req, res) => {
 
         const { data, error } = await supabase
             .from("collections")
-            .select("*")
+            .select("*, articles(count)")
             .eq("user_id", userId)
+            .eq("articles.is_deleted", false)
             .order("name", { ascending: true });
 
         if (error) throw error;
@@ -32,9 +33,10 @@ router.get("/:id", async (req, res) => {
 
         const { data, error } = await supabase
             .from("collections")
-            .select("*")
+            .select("*, articles(count)")
             .eq("id", id)
             .eq("user_id", userId)
+            .eq("articles.is_deleted", false)
             .single();
 
         if (error) throw error;

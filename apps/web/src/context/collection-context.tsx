@@ -15,6 +15,7 @@ export interface Collection {
   name: string;
   user_id: string;
   created_at: string;
+  articles?: { count: number }[];
 }
 
 interface CollectionContextType {
