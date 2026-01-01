@@ -27,7 +27,7 @@ export function Sidebar() {
   const pathname = usePathname();
 
   return (
-    <div className="w-64 shrink-0 border-r bg-background min-h-screen py-6 pl-4 pr-6 flex flex-col gap-6">
+    <div className="w-64 shrink-0 border-r bg-background h-[calc(100vh-4rem)] sticky top-16 py-6 pl-4 pr-6 flex flex-col gap-6">
       {/* <div className="px-2">
         <h1 className="text-2xl font-serif font-bold tracking-tight mb-6">
           Instapaper
