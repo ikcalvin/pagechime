@@ -27,3 +27,22 @@ create index if not exists idx_article_tags_tag_id on article_tags(tag_id);
 -- Disable RLS for now as per project convention
 alter table tags disable row level security;
 alter table article_tags disable row level security;
+
+-- Create collections table
+create table if not exists collections (
+  id uuid primary key default uuid_generate_v4(),
+  user_id uuid not null, -- references users(id)
+  name text not null,
+  created_at timestamptz default now()
+);
+
+-- Add collection_id to articles
+alter table articles 
+add column if not exists collection_id uuid references collections(id) on delete set null;
+
+-- Index for performance
+create index if not exists idx_collections_user_id on collections(user_id);
+create index if not exists idx_articles_collection_id on articles(collection_id);
+
+-- Disable RLS for collections
+alter table collections disable row level security;

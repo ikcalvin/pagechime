@@ -21,6 +21,7 @@ import Header from "@/components/header";
 import { Toaster } from "@/components/ui/sonner";
 import { PlayerProvider } from "@/context/player-context";
 import { MediaPlayer } from "@/components/media-player";
+import { CollectionProvider } from "@/context/collection-context";
 
 export default function RootLayout({
   children,
@@ -33,10 +34,12 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <PlayerProvider>
-          <Header />
-          <main className="container mx-auto pb-24">{children}</main>
-          <MediaPlayer />
-          <Toaster />
+          <CollectionProvider>
+            <Header />
+            <main className="container mx-auto pb-24">{children}</main>
+            <MediaPlayer />
+            <Toaster />
+          </CollectionProvider>
         </PlayerProvider>
       </body>
     </html>

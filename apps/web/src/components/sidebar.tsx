@@ -1,39 +1,34 @@
 "use client";
 
+import React, { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import {
-  Home,
-  Heart,
-  Archive,
-  Video,
-  FileText,
-  Tag,
-  FolderPlus,
-} from "lucide-react";
+import { Home, Archive, Folder, Plus, Tag } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
+import {
+  CreateCollectionDialog,
+  Collection,
+} from "@/components/create-collection-dialog";
+import api from "@/utils/api";
+import { useCollections } from "@/context/collection-context";
 
 const sidebarItems = [
   { icon: Home, label: "Home", href: "/" },
-  // { icon: Heart, label: "Liked", href: "/liked" },
   { icon: Archive, label: "Archive", href: "/archive" },
-  // { icon: Video, label: "Videos", href: "/videos" },
-  // { icon: FileText, label: "Notes", href: "/notes" },
 ];
 
 export function Sidebar() {
   const pathname = usePathname();
+  const { collections } = useCollections();
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
+
+  const handleCollectionCreated = (newCollection: Collection) => {
+    // Context handles state update
+  };
 
   return (
     <div className="w-64 shrink-0 border-r bg-background h-[calc(100vh-4rem)] sticky top-16 py-6 pl-4 pr-6 flex flex-col gap-6">
-      {/* <div className="px-2">
-        <h1 className="text-2xl font-serif font-bold tracking-tight mb-6">
-          Instapaper
-        </h1>
-      </div> */}
-
       <nav className="flex flex-col gap-1">
         {sidebarItems.map((item) => {
           const isActive = pathname === item.href;
@@ -55,6 +50,42 @@ export function Sidebar() {
           );
         })}
 
+        <div className="pt-4">
+          <h3 className="mb-2 px-2 text-sm font-medium text-muted-foreground">
+            Collections
+          </h3>
+          <div className="flex flex-col gap-1">
+            {collections.map((collection) => {
+              const href = `/collection/${collection.id}`;
+              const isActive = pathname === href;
+              return (
+                <Link key={collection.id} href={href} passHref>
+                  <Button
+                    variant="ghost"
+                    className={cn(
+                      "w-full justify-start gap-3 px-2 text-base font-medium",
+                      isActive
+                        ? "text-foreground font-semibold"
+                        : "text-muted-foreground hover:text-foreground"
+                    )}
+                  >
+                    <Folder className="h-4 w-4" />
+                    <span className="truncate">{collection.name}</span>
+                  </Button>
+                </Link>
+              );
+            })}
+            <Button
+              variant="ghost"
+              className="w-full justify-start gap-3 px-2 text-sm text-muted-foreground hover:text-foreground"
+              onClick={() => setCreateDialogOpen(true)}
+            >
+              <Plus className="h-4 w-4" />
+              Create Collection
+            </Button>
+          </div>
+        </div>
+
         <div className="mt-2 text-muted-foreground">
           <Button
             variant="ghost"
@@ -66,14 +97,11 @@ export function Sidebar() {
         </div>
       </nav>
 
-      <div className="mt-4 px-2">
-        <Button
-          variant="ghost"
-          className="w-full justify-start pl-0 text-muted-foreground hover:text-foreground text-sm font-normal"
-        >
-          Add Folder
-        </Button>
-      </div>
+      <CreateCollectionDialog
+        open={createDialogOpen}
+        onOpenChange={setCreateDialogOpen}
+        onSuccess={handleCollectionCreated}
+      />
     </div>
   );
 }

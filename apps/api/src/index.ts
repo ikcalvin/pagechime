@@ -5,6 +5,7 @@ import { processArticle } from "./inngest/functions";
 import { supabase } from "./lib/supabase";
 import cors from "cors";
 import dotenv from "dotenv";
+import collectionsRouter from "./routes/collections";
 
 dotenv.config();
 
@@ -63,6 +64,7 @@ app.post("/api/articles", requireAuth, async (req, res) => {
                 user_id: userId,
                 original_url: url,
                 status: "queued",
+                collection_id: req.body.collectionId || null,
             })
             .select()
             .single();
@@ -97,6 +99,7 @@ app.put("/api/articles/:id", requireAuth, async (req, res) => {
         const updates: any = {};
         if (typeof is_archived === 'boolean') updates.is_archived = is_archived;
         if (typeof is_deleted === 'boolean') updates.is_deleted = is_deleted;
+        if (req.body.collection_id !== undefined) updates.collection_id = req.body.collection_id;
 
         const { data, error } = await supabase
             .from("articles")
@@ -120,14 +123,19 @@ app.get("/api/articles", requireAuth, async (req, res) => {
         // @ts-ignore
         const userId = req.user.id;
 
-        const { data, error } = await supabase
+        let query = supabase
             .from("articles")
             .select("*, tags(*)")
             .eq("user_id", userId)
             .eq("is_deleted", false) // Default to not showing deleted
             .order("created_at", { ascending: false });
 
-        if (error) throw error;
+        if (req.query.collectionId) {
+            // @ts-ignore
+            query = query.eq("collection_id", req.query.collectionId);
+        }
+
+        const { data, error } = await query;
 
         // Transform data if necessary, though Supabase returns tags as an array of objects which is good
         res.json(data);
@@ -229,6 +237,9 @@ app.delete("/api/articles/:id/tags/:tagId", requireAuth, async (req, res) => {
         res.status(500).json({ error: err.message });
     }
 });
+
+// Collections API
+app.use("/api/collections", requireAuth, collectionsRouter);
 
 // Inngest Serve Handler
 app.use(

@@ -12,9 +12,8 @@ import {
   MoreHorizontal,
   Trash2,
   Archive,
-  Edit,
-  Inbox,
   RotateCcw,
+  FolderPlus,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -22,13 +21,15 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSub,
+  DropdownMenuSubTrigger,
+  DropdownMenuSubContent,
+  DropdownMenuPortal,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import api from "@/utils/api";
 import { usePlayer } from "@/context/player-context";
-import { cn } from "@/lib/utils";
 import { TagManager } from "./tag-manager";
 
 type Tag = {
@@ -48,23 +49,34 @@ type Article = {
   is_archived?: boolean;
   is_deleted?: boolean;
   tags?: Tag[];
+  collection_id?: string | null;
+};
+
+type Collection = {
+  id: string;
+  name: string;
 };
 
 export function ArticleList({
   view = "inbox",
+  collectionId,
 }: {
   view?: "inbox" | "archive";
+  collectionId?: string;
 }) {
   const [articles, setArticles] = useState<Article[]>([]);
+  const [collections, setCollections] = useState<Collection[]>([]);
   const [loading, setLoading] = useState(true);
   const { playArticle, currentArticle, isPlaying, togglePlay } = usePlayer();
 
   const fetchArticles = async () => {
     try {
-      // Only show loading on initial fetch
       if (articles.length === 0) setLoading(true);
 
-      const response = await api.get("/articles");
+      const params: any = {};
+      if (collectionId) params.collectionId = collectionId;
+
+      const response = await api.get("/articles", { params });
       setArticles(response.data || []);
     } catch (error) {
       console.error("Failed to fetch articles:", error);
@@ -73,15 +85,23 @@ export function ArticleList({
     }
   };
 
+  const fetchCollections = async () => {
+    try {
+      const res = await api.get("/collections");
+      setCollections(res.data || []);
+    } catch (error) {
+      console.error("Failed to fetch collections", error);
+    }
+  };
+
   useEffect(() => {
     fetchArticles();
-    // Poll every 5 seconds
+    fetchCollections();
     const interval = setInterval(fetchArticles, 5000);
     return () => clearInterval(interval);
-  }, []);
+  }, [collectionId]); // Re-fetch if collectionId changes
 
   const updateArticleStatus = async (id: string, updates: Partial<Article>) => {
-    // Optimistic update
     setArticles((prev) =>
       prev.map((a) => (a.id === id ? { ...a, ...updates } : a))
     );
@@ -90,7 +110,7 @@ export function ArticleList({
       await api.put(`/articles/${id}`, updates);
     } catch (error) {
       console.error("Failed to update article:", error);
-      fetchArticles(); // Revert on error
+      fetchArticles();
     }
   };
 
@@ -102,6 +122,13 @@ export function ArticleList({
     if (confirm("Are you sure you want to delete this article?")) {
       updateArticleStatus(article.id, { is_deleted: true });
     }
+  };
+
+  const handleMoveToCollection = (
+    article: Article,
+    collectionId: string | null
+  ) => {
+    updateArticleStatus(article.id, { collection_id: collectionId }); // @ts-ignore
   };
 
   const handleTagsChange = (articleId: string, newTags: Tag[]) => {
@@ -162,10 +189,8 @@ export function ArticleList({
             >
               <CardContent className="p-0">
                 <div className="flex flex-row">
-                  {/* Left Column: Image (Thumbnail) */}
                   {article.image_url && (
                     <div className="w-32 sm:w-48 relative shrink-0 hidden sm:block">
-                      {/* Use a real image component here in the future */}
                       <img
                         src={article.image_url}
                         alt={article.title}
@@ -177,14 +202,11 @@ export function ArticleList({
                     </div>
                   )}
 
-                  {/* Right Column: Content */}
                   <div className="flex-1 p-5 flex flex-col gap-2">
-                    {/* Title */}
                     <h3 className="font-bold text-xl leading-tight text-foreground">
                       {article.title || "Untitled Article"}
                     </h3>
 
-                    {/* Metadata Row */}
                     <div className="flex items-center text-xs text-muted-foreground gap-2 flex-wrap">
                       <span className="font-medium text-foreground">
                         {domain}
@@ -198,12 +220,10 @@ export function ArticleList({
                       </span>
                     </div>
 
-                    {/* Snippet */}
                     <p className="text-sm text-muted-foreground line-clamp-2 leading-relaxed">
                       {article.clean_text || article.original_url}
                     </p>
 
-                    {/* Tags */}
                     <TagManager
                       articleId={article.id}
                       initialTags={article.tags}
@@ -212,7 +232,6 @@ export function ArticleList({
                       }
                     />
 
-                    {/* Action Row */}
                     <div className="flex items-center gap-3 mt-3">
                       <Badge
                         variant="secondary"
@@ -253,11 +272,6 @@ export function ArticleList({
                                     togglePlay();
                                   }}
                                 >
-                                  <div className="flex items-end gap-0.5 h-3 w-4 mr-1.5 pb-0.5">
-                                    <span className="bg-primary w-1 h-full animate-[music-bar-1_1s_ease-in-out_infinite]" />
-                                    <span className="bg-primary w-1 h-2/3 animate-[music-bar-2_1s_ease-in-out_infinite]" />
-                                    <span className="bg-primary w-1 h-full animate-[music-bar-3_1s_ease-in-out_infinite]" />
-                                  </div>
                                   Playing
                                 </Button>
                               ) : (
@@ -267,12 +281,7 @@ export function ArticleList({
                                   className="h-8 px-2 text-muted-foreground hover:text-foreground"
                                   onClick={(e) => {
                                     e.preventDefault();
-                                    const articleToPlay = {
-                                      ...article,
-                                      // Ensure all required fields for playback are present if type mismatch occurs,
-                                      // but Article type matches context Article type here.
-                                    };
-                                    playArticle(articleToPlay);
+                                    playArticle(article as any);
                                   }}
                                 >
                                   <Play className="h-4 w-4 mr-1.5" />
@@ -286,7 +295,6 @@ export function ArticleList({
                   </div>
                 </div>
 
-                {/* Options Menu */}
                 <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
@@ -298,7 +306,34 @@ export function ArticleList({
                         <MoreHorizontal className="h-5 w-5" />
                       </Button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
+                    <DropdownMenuContent align="end" className="w-48">
+                      <DropdownMenuSub>
+                        <DropdownMenuSubTrigger>
+                          <FolderPlus className="mr-2 h-4 w-4" />
+                          Move to Collection
+                        </DropdownMenuSubTrigger>
+                        <DropdownMenuPortal>
+                          <DropdownMenuSubContent>
+                            <DropdownMenuItem
+                              onClick={() =>
+                                handleMoveToCollection(article, null)
+                              }
+                            >
+                              None (Remove)
+                            </DropdownMenuItem>
+                            {collections.map((grp) => (
+                              <DropdownMenuItem
+                                key={grp.id}
+                                onClick={() =>
+                                  handleMoveToCollection(article, grp.id)
+                                }
+                              >
+                                {grp.name}
+                              </DropdownMenuItem>
+                            ))}
+                          </DropdownMenuSubContent>
+                        </DropdownMenuPortal>
+                      </DropdownMenuSub>
                       <DropdownMenuItem onClick={() => handleArchive(article)}>
                         {article.is_archived ? (
                           <>
