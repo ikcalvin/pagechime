@@ -24,6 +24,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import api from "@/utils/api";
+import { usePlayer } from "@/context/player-context";
+import { cn } from "@/lib/utils";
 
 type Article = {
   id: string;
@@ -39,6 +41,7 @@ type Article = {
 export function ArticleList() {
   const [articles, setArticles] = useState<Article[]>([]);
   const [loading, setLoading] = useState(true);
+  const { playArticle, currentArticle, isPlaying, togglePlay } = usePlayer();
 
   const fetchArticles = async () => {
     try {
@@ -175,21 +178,45 @@ export function ArticleList() {
 
                         {article.status === "completed" &&
                           article.audio_url && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-8 px-2 text-muted-foreground hover:text-foreground"
-                              asChild
-                            >
-                              <a
-                                href={article.audio_url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                              >
-                                <Play className="h-4 w-4 mr-1.5" />
-                                Listen
-                              </a>
-                            </Button>
+                            <>
+                              {currentArticle?.id === article.id &&
+                              isPlaying ? (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-8 px-2 text-primary hover:text-primary font-medium"
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    togglePlay();
+                                  }}
+                                >
+                                  <div className="flex items-end gap-0.5 h-3 w-4 mr-1.5 pb-0.5">
+                                    <span className="bg-primary w-1 h-full animate-[music-bar-1_1s_ease-in-out_infinite]" />
+                                    <span className="bg-primary w-1 h-2/3 animate-[music-bar-2_1s_ease-in-out_infinite]" />
+                                    <span className="bg-primary w-1 h-full animate-[music-bar-3_1s_ease-in-out_infinite]" />
+                                  </div>
+                                  Playing
+                                </Button>
+                              ) : (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-8 px-2 text-muted-foreground hover:text-foreground"
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    const articleToPlay = {
+                                      ...article,
+                                      // Ensure all required fields for playback are present if type mismatch occurs,
+                                      // but Article type matches context Article type here.
+                                    };
+                                    playArticle(articleToPlay);
+                                  }}
+                                >
+                                  <Play className="h-4 w-4 mr-1.5" />
+                                  Listen
+                                </Button>
+                              )}
+                            </>
                           )}
                       </div>
                     </div>

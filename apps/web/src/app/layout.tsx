@@ -19,6 +19,8 @@ export const metadata: Metadata = {
 
 import Header from "@/components/header";
 import { Toaster } from "@/components/ui/sonner";
+import { PlayerProvider } from "@/context/player-context";
+import { MediaPlayer } from "@/components/media-player";
 
 export default function RootLayout({
   children,
@@ -30,9 +32,12 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <Header />
-        <main className="container mx-auto">{children}</main>
-        <Toaster />
+        <PlayerProvider>
+          <Header />
+          <main className="container mx-auto pb-24">{children}</main>
+          <MediaPlayer />
+          <Toaster />
+        </PlayerProvider>
       </body>
     </html>
   );
