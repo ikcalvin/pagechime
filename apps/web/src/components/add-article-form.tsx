@@ -5,17 +5,24 @@ import { Plus, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { toast } from "sonner";
 import api from "@/utils/api";
 import { useRouter } from "next/navigation";
 
-export function AddArticleForm() {
+interface AddArticleDialogProps {
+  children?: React.ReactNode;
+}
+
+export function AddArticleDialog({ children }: AddArticleDialogProps) {
+  const [open, setOpen] = useState(false);
   const [url, setUrl] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
@@ -31,6 +38,7 @@ export function AddArticleForm() {
         description: "Your article has been queued for processing.",
       });
       setUrl("");
+      setOpen(false); // Close dialog on success
       router.refresh();
     } catch (error) {
       toast.error("Error", {
@@ -42,38 +50,45 @@ export function AddArticleForm() {
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Add New Article</CardTitle>
-        <CardDescription>
-          Enter a URL to save and listen to later.
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <form onSubmit={handleSubmit} className="flex gap-4">
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        {children || (
+          <Button>
+            <Plus className="mr-2 h-4 w-4" />
+            Add Link
+          </Button>
+        )}
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-[425px]">
+        <DialogHeader>
+          <DialogTitle>Add New Article</DialogTitle>
+          <DialogDescription>
+            Enter a URL to save and listen to later.
+          </DialogDescription>
+        </DialogHeader>
+        <form onSubmit={handleSubmit} className="grid gap-4 py-4">
           <Input
             type="url"
             placeholder="https://example.com/article"
             value={url}
             onChange={(e) => setUrl(e.target.value)}
             required
-            className="flex-1"
+            className="w-full"
           />
-          <Button type="submit" disabled={isLoading}>
-            {isLoading ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Adding...
-              </>
-            ) : (
-              <>
-                <Plus className="mr-2 h-4 w-4" />
-                Add
-              </>
-            )}
-          </Button>
+          <DialogFooter>
+            <Button type="submit" disabled={isLoading}>
+              {isLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Adding...
+                </>
+              ) : (
+                "Add Article"
+              )}
+            </Button>
+          </DialogFooter>
         </form>
-      </CardContent>
-    </Card>
+      </DialogContent>
+    </Dialog>
   );
 }
