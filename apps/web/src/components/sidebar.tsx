@@ -28,11 +28,11 @@ export function Sidebar() {
 
   return (
     <div className="w-64 shrink-0 border-r bg-background min-h-screen py-6 pl-4 pr-6 flex flex-col gap-6">
-      <div className="px-2">
+      {/* <div className="px-2">
         <h1 className="text-2xl font-serif font-bold tracking-tight mb-6">
           Instapaper
         </h1>
-      </div>
+      </div> */}
 
       <nav className="flex flex-col gap-1">
         {sidebarItems.map((item) => {
