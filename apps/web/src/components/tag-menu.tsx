@@ -23,12 +23,16 @@ type TagMenuProps = {
   articleId: string;
   initialTags?: Tag[];
   onTagsChange?: (tags: Tag[]) => void;
+  availableTags?: Tag[];
+  onRefreshTags?: () => void;
 };
 
 export function TagMenu({
   articleId,
   initialTags = [],
   onTagsChange,
+  availableTags: globalAvailableTags,
+  onRefreshTags,
 }: TagMenuProps) {
   const {
     tags,
@@ -37,7 +41,13 @@ export function TagMenu({
     addTag,
     createTag,
     removeTag,
-  } = useArticleTags(articleId, initialTags, onTagsChange);
+  } = useArticleTags(
+    articleId,
+    initialTags,
+    onTagsChange,
+    globalAvailableTags,
+    onRefreshTags
+  );
 
   const [newTag, setNewTag] = useState("");
 

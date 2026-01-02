@@ -92,6 +92,8 @@ interface SortableArticleProps {
   handleArchive: (article: Article) => void;
   handleDelete: (article: Article) => void;
   collections: Collection[];
+  availableTags: Tag[];
+  onRefreshTags: () => void;
 }
 
 function SortableArticle({
@@ -106,6 +108,8 @@ function SortableArticle({
   handleArchive,
   handleDelete,
   collections,
+  availableTags,
+  onRefreshTags,
 }: SortableArticleProps) {
   const {
     attributes,
@@ -224,6 +228,8 @@ function SortableArticle({
                   articleId={article.id}
                   initialTags={article.tags}
                   onTagsChange={(tags) => handleTagsChange(article.id, tags)}
+                  availableTags={availableTags}
+                  onRefreshTags={onRefreshTags}
                 />
                 <DropdownMenuItem onClick={() => handleArchive(article)}>
                   {article.is_archived ? (
@@ -339,6 +345,7 @@ export function ArticleList({
 }) {
   const [articles, setArticles] = useState<Article[]>([]);
   const [collections, setCollections] = useState<Collection[]>([]);
+  const [availableTags, setAvailableTags] = useState<Tag[]>([]);
   const [loading, setLoading] = useState(true);
   const { playArticle, currentArticle, isPlaying, togglePlay } = usePlayer();
 
@@ -374,9 +381,19 @@ export function ArticleList({
     }
   };
 
+  const fetchTags = async () => {
+    try {
+      const response = await api.get("/tags");
+      setAvailableTags(response.data || []);
+    } catch (error) {
+      console.error("Failed to fetch tags", error);
+    }
+  };
+
   useEffect(() => {
     fetchArticles();
     fetchCollections();
+    fetchTags();
     const interval = setInterval(fetchArticles, 10000); // Polling every 10s
     return () => clearInterval(interval);
   }, [collectionId]);
@@ -537,6 +554,8 @@ export function ArticleList({
                 handleArchive={handleArchive}
                 handleDelete={handleDelete}
                 collections={collections}
+                availableTags={availableTags}
+                onRefreshTags={fetchTags}
               />
             ))
           )}

@@ -20,23 +20,46 @@ export type Tag = {
 export function useArticleTags(
   articleId: string,
   initialTags: Tag[] = [],
-  onTagsChange?: (tags: Tag[]) => void
+  onTagsChange?: (tags: Tag[]) => void,
+  globalAvailableTags?: Tag[],
+  onGlobalTagsUpdate?: () => void
 ) {
   const [tags, setTags] = useState<Tag[]>(initialTags);
-  const [availableTags, setAvailableTags] = useState<Tag[]>([]);
+  const [internalAvailableTags, setInternalAvailableTags] = useState<Tag[]>([]);
+
+  const availableTags = globalAvailableTags || internalAvailableTags;
 
   useEffect(() => {
     setTags(initialTags);
   }, [initialTags]);
 
   const fetchAvailableTags = useCallback(async () => {
+    // If global tags are provided, we assume they are already fetched by parent.
+    // We do NOT want to trigger a refresh here just for viewing.
+    if (globalAvailableTags) {
+      return;
+    }
     try {
       const response = await api.get("/tags");
-      setAvailableTags(response.data || []);
+      setInternalAvailableTags(response.data || []);
     } catch (error) {
       console.error("Failed to fetch tags", error);
     }
-  }, []);
+  }, [globalAvailableTags]);
+
+  const refreshAvailableTags = useCallback(async () => {
+    if (onGlobalTagsUpdate) {
+      onGlobalTagsUpdate();
+      return;
+    }
+    // Fallback to internal fetch
+    try {
+      const response = await api.get("/tags");
+      setInternalAvailableTags(response.data || []);
+    } catch (error) {
+      console.error("Failed to refresh tags", error);
+    }
+  }, [onGlobalTagsUpdate]);
 
   const addTag = async (tag: Tag) => {
     // Optimistic update
@@ -63,7 +86,7 @@ export function useArticleTags(
 
       // Then add to article
       await addTag(createdTag);
-      fetchAvailableTags(); // Refresh available list
+      refreshAvailableTags(); // Refresh available list
     } catch (error) {
       console.error("Failed to create tag", error);
     }
@@ -86,6 +109,7 @@ export function useArticleTags(
     tags,
     availableTags,
     fetchAvailableTags,
+    refreshAvailableTags,
     addTag,
     createTag,
     removeTag,
