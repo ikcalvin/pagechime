@@ -88,17 +88,18 @@ app.post("/api/articles", requireAuth, async (req, res) => {
     }
 });
 
-// Update article (Archive/Delete)
+// Update article (Archive/Delete/Reorder)
 app.put("/api/articles/:id", requireAuth, async (req, res) => {
     try {
         const { id } = req.params;
-        const { is_archived, is_deleted } = req.body;
+        const { is_archived, is_deleted, sort_order } = req.body;
         // @ts-ignore
         const userId = req.user.id;
 
         const updates: any = {};
         if (typeof is_archived === 'boolean') updates.is_archived = is_archived;
         if (typeof is_deleted === 'boolean') updates.is_deleted = is_deleted;
+        if (typeof sort_order === 'number') updates.sort_order = sort_order;
         if (req.body.collection_id !== undefined) updates.collection_id = req.body.collection_id;
 
         const { data, error } = await supabase
@@ -128,7 +129,8 @@ app.get("/api/articles", requireAuth, async (req, res) => {
             .select("*, tags(*)")
             .eq("user_id", userId)
             .eq("is_deleted", false) // Default to not showing deleted
-            .order("created_at", { ascending: false });
+            .order("sort_order", { ascending: false }) // Sort by user order (default newest/highest first)
+            .order("created_at", { ascending: false }); // Fallback
 
         if (req.query.collectionId) {
             // @ts-ignore

@@ -14,6 +14,7 @@ import {
   Archive,
   RotateCcw,
   FolderPlus,
+  GripVertical,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -31,6 +32,23 @@ import { Badge } from "@/components/ui/badge";
 import api from "@/utils/api";
 import { usePlayer } from "@/context/player-context";
 import { TagManager } from "./tag-manager";
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 
 type Tag = {
   id: string;
@@ -50,12 +68,238 @@ type Article = {
   is_deleted?: boolean;
   tags?: Tag[];
   collection_id?: string | null;
+  sort_order?: number;
 };
 
 type Collection = {
   id: string;
   name: string;
 };
+
+interface SortableArticleProps {
+  article: Article;
+  currentArticle: Article | null;
+  isPlaying: boolean;
+  togglePlay: () => void;
+  playArticle: (article: Article) => void;
+  getStatusIcon: (status: Article["status"]) => JSX.Element;
+  handleTagsChange: (id: string, tags: Tag[]) => void;
+  handleMoveToCollection: (
+    article: Article,
+    collectionId: string | null
+  ) => void;
+  handleArchive: (article: Article) => void;
+  handleDelete: (article: Article) => void;
+  collections: Collection[];
+}
+
+function SortableArticle({
+  article,
+  currentArticle,
+  isPlaying,
+  togglePlay,
+  playArticle,
+  getStatusIcon,
+  handleTagsChange,
+  handleMoveToCollection,
+  handleArchive,
+  handleDelete,
+  collections,
+}: SortableArticleProps) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: article.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    zIndex: isDragging ? 50 : "auto",
+    position: isDragging ? "relative" : ("relative" as "relative"),
+  };
+
+  const domain = new URL(article.original_url).hostname.replace("www.", "");
+  const readingTime = Math.max(
+    1,
+    Math.ceil((article.clean_text?.split(/\s+/).length || 0) / 200)
+  );
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={isDragging ? "opacity-50" : ""}
+    >
+      <Card
+        className={`group relative overflow-visible transition-all hover:shadow-md ${
+          isDragging ? "shadow-xl ring-2 ring-primary/20 scale-[1.02]" : ""
+        }`}
+      >
+        <CardContent className="p-3 flex items-start gap-4">
+          {/* Drag Handle - Visible on hover or when dragging */}
+          <div
+            {...attributes}
+            {...listeners}
+            className={`mt-2 -ml-2 cursor-grab active:cursor-grabbing p-1.5 rounded-md text-muted-foreground/40 hover:text-foreground hover:bg-muted/50 transition-colors ${
+              isDragging ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+            }`}
+          >
+            <GripVertical className="h-4 w-4" />
+          </div>
+
+          {/* Thumbnail Image */}
+          {article.image_url && (
+            <div className="shrink-0">
+              <div className="h-20 w-20 sm:h-24 sm:w-24 rounded-md overflow-hidden bg-muted relative border border-border/50">
+                <img
+                  src={article.image_url}
+                  alt={article.title}
+                  className="h-full w-full object-cover transition-transform group-hover:scale-105"
+                  onError={(e) => {
+                    e.currentTarget.style.display = "none";
+                  }}
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Content */}
+          <div className="flex-1 min-w-0 flex flex-col gap-1.5">
+            <div className="flex items-start justify-between gap-4">
+              <h3 className="font-semibold text-base leading-snug text-foreground line-clamp-2">
+                {article.title || "Untitled Article"}
+              </h3>
+
+              {/* Actions Menu */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-6 w-6 -mr-1 shrink-0 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity"
+                  >
+                    <MoreHorizontal className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-48">
+                  <DropdownMenuSub>
+                    <DropdownMenuSubTrigger>
+                      <FolderPlus className="mr-2 h-4 w-4" />
+                      Move to Collection
+                    </DropdownMenuSubTrigger>
+                    <DropdownMenuPortal>
+                      <DropdownMenuSubContent>
+                        <DropdownMenuItem
+                          onClick={() => handleMoveToCollection(article, null)}
+                        >
+                          None (Remove)
+                        </DropdownMenuItem>
+                        {collections.map((grp) => (
+                          <DropdownMenuItem
+                            key={grp.id}
+                            onClick={() =>
+                              handleMoveToCollection(article, grp.id)
+                            }
+                          >
+                            {grp.name}
+                          </DropdownMenuItem>
+                        ))}
+                      </DropdownMenuSubContent>
+                    </DropdownMenuPortal>
+                  </DropdownMenuSub>
+                  <DropdownMenuItem onClick={() => handleArchive(article)}>
+                    {article.is_archived ? (
+                      <>
+                        <RotateCcw className="mr-2 h-4 w-4" />
+                        Unarchive
+                      </>
+                    ) : (
+                      <>
+                        <Archive className="mr-2 h-4 w-4" />
+                        Archive
+                      </>
+                    )}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    className="text-red-600"
+                    onClick={() => handleDelete(article)}
+                  >
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    Delete
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+
+            <div className="flex items-center text-xs text-muted-foreground gap-2">
+              <span className="font-medium text-foreground truncate max-w-[120px]">
+                {domain}
+              </span>
+              <span>•</span>
+              <span>{readingTime} min read</span>
+              <span className="hidden sm:inline">
+                •{" "}
+                {formatDistanceToNow(new Date(article.created_at), {
+                  addSuffix: true,
+                })}
+              </span>
+            </div>
+
+            <TagManager
+              articleId={article.id}
+              initialTags={article.tags}
+              onTagsChange={(tags) => handleTagsChange(article.id, tags)}
+            />
+
+            <div className="flex items-center gap-2 mt-1">
+              <Badge
+                variant="outline"
+                className="flex items-center gap-1.5 font-normal h-6 text-[10px] px-2"
+              >
+                {getStatusIcon(article.status)}
+                <span className="capitalize">{article.status}</span>
+              </Badge>
+
+              {article.status === "completed" && article.audio_url && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className={`h-6 px-2 text-[10px] uppercase tracking-wide font-medium ${
+                    currentArticle?.id === article.id && isPlaying
+                      ? "text-primary hover:text-primary/80"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    if (currentArticle?.id === article.id && isPlaying) {
+                      togglePlay();
+                    } else {
+                      playArticle(article);
+                    }
+                  }}
+                >
+                  {currentArticle?.id === article.id && isPlaying ? (
+                    <>
+                      Playing <span className="ml-1 animate-pulse">●</span>
+                    </>
+                  ) : (
+                    <>
+                      <Play className="h-3 w-3 mr-1" /> Listen
+                    </>
+                  )}
+                </Button>
+              )}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
 
 export function ArticleList({
   view = "inbox",
@@ -68,6 +312,13 @@ export function ArticleList({
   const [collections, setCollections] = useState<Collection[]>([]);
   const [loading, setLoading] = useState(true);
   const { playArticle, currentArticle, isPlaying, togglePlay } = usePlayer();
+
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
 
   const fetchArticles = async () => {
     try {
@@ -97,9 +348,9 @@ export function ArticleList({
   useEffect(() => {
     fetchArticles();
     fetchCollections();
-    const interval = setInterval(fetchArticles, 5000);
+    const interval = setInterval(fetchArticles, 10000); // Polling every 10s
     return () => clearInterval(interval);
-  }, [collectionId]); // Re-fetch if collectionId changes
+  }, [collectionId]);
 
   const updateArticleStatus = async (id: string, updates: Partial<Article>) => {
     setArticles((prev) =>
@@ -110,7 +361,7 @@ export function ArticleList({
       await api.put(`/articles/${id}`, updates);
     } catch (error) {
       console.error("Failed to update article:", error);
-      fetchArticles();
+      fetchArticles(); // Revert on failure
     }
   };
 
@@ -128,7 +379,7 @@ export function ArticleList({
     article: Article,
     collectionId: string | null
   ) => {
-    updateArticleStatus(article.id, { collection_id: collectionId }); // @ts-ignore
+    updateArticleStatus(article.id, { collection_id: collectionId });
   };
 
   const handleTagsChange = (articleId: string, newTags: Tag[]) => {
@@ -144,16 +395,78 @@ export function ArticleList({
     return true;
   });
 
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+
+    if (active.id !== over?.id) {
+      const oldIndex = filteredArticles.findIndex((a) => a.id === active.id);
+      const newIndex = filteredArticles.findIndex((a) => a.id === over?.id);
+
+      if (oldIndex === -1 || newIndex === -1) return;
+
+      const newFilteredItems = arrayMove(filteredArticles, oldIndex, newIndex);
+
+      // Calculate new sort_order
+      // Sorting is Descending by default (highest number is top).
+      // So if I move item to newIndex, I need to pick a value between newIndex-1 and newIndex+1
+
+      const prevItem = newFilteredItems[newIndex - 1];
+      const nextItem = newFilteredItems[newIndex + 1];
+
+      let newSortOrder = 0;
+
+      if (!prevItem && !nextItem) {
+        // Only one item, doesn't matter
+        newSortOrder = Date.now() / 1000;
+      } else if (!prevItem) {
+        // Moved to top. sort_order should be higher than first item
+        newSortOrder = (nextItem.sort_order || 0) + 1000;
+      } else if (!nextItem) {
+        // Moved to bottom. sort_order should be lower than last item
+        newSortOrder = (prevItem.sort_order || 0) - 1000;
+      } else {
+        // Between two items
+        const prevOrder = prevItem.sort_order || 0;
+        const nextOrder = nextItem.sort_order || 0;
+        newSortOrder = (prevOrder + nextOrder) / 2;
+      }
+
+      // Optimistic update
+      // We need to update the source 'articles' array, not just filtered.
+      // But filtered is just a view.
+      // We update the specific article's sort_order and re-sort the 'articles' state?
+      // Actually 'articles' might contain archived ones.
+      // Dragging only happens within the current view (filtered).
+      // So we update the active item's sort_order.
+
+      const updatedArticle = {
+        ...filteredArticles[oldIndex],
+        sort_order: newSortOrder,
+      };
+
+      // Map the original articles array to update this one article
+      setArticles(
+        (prev) =>
+          prev
+            .map((a) => (a.id === active.id ? updatedArticle : a))
+            .sort((a, b) => (b.sort_order || 0) - (a.sort_order || 0)) // Re-sort to maintain view
+      );
+
+      // Call API
+      api.put(`/articles/${active.id}`, { sort_order: newSortOrder });
+    }
+  };
+
   const getStatusIcon = (status: Article["status"]) => {
     switch (status) {
       case "completed":
-        return <CheckCircle2 className="h-4 w-4 text-green-500" />;
+        return <CheckCircle2 className="h-3.5 w-3.5 text-green-500" />;
       case "processing":
-        return <RefreshCw className="h-4 w-4 text-blue-500 animate-spin" />;
+        return <RefreshCw className="h-3.5 w-3.5 text-blue-500 animate-spin" />;
       case "failed":
-        return <XCircle className="h-4 w-4 text-red-500" />;
+        return <XCircle className="h-3.5 w-3.5 text-red-500" />;
       default:
-        return <Clock className="h-4 w-4 text-gray-400" />;
+        return <Clock className="h-3.5 w-3.5 text-gray-400" />;
     }
   };
 
@@ -162,206 +475,44 @@ export function ArticleList({
   }
 
   return (
-    <div className="space-y-4">
-      {filteredArticles.length === 0 ? (
-        <Card>
-          <CardContent className="py-10 text-center text-muted-foreground">
-            {view === "inbox"
-              ? "No articles in inbox. Add one above!"
-              : "No archived articles."}
-          </CardContent>
-        </Card>
-      ) : (
-        filteredArticles.map((article) => {
-          const domain = new URL(article.original_url).hostname.replace(
-            "www.",
-            ""
-          );
-          const readingTime = Math.max(
-            1,
-            Math.ceil((article.clean_text?.split(/\s+/).length || 0) / 200)
-          );
-
-          return (
-            <Card
-              key={article.id}
-              className="overflow-hidden relative group py-0"
-            >
-              <CardContent className="p-0">
-                <div className="flex flex-row">
-                  {article.image_url && (
-                    <div className="w-32 sm:w-48 relative shrink-0 hidden sm:block">
-                      <img
-                        src={article.image_url}
-                        alt={article.title}
-                        className="absolute inset-0 w-full h-full object-cover"
-                        onError={(e) => {
-                          e.currentTarget.style.display = "none";
-                        }}
-                      />
-                    </div>
-                  )}
-
-                  <div className="flex-1 p-5 flex flex-col gap-2">
-                    <h3 className="font-bold text-xl leading-tight text-foreground">
-                      {article.title || "Untitled Article"}
-                    </h3>
-
-                    <div className="flex items-center text-xs text-muted-foreground gap-2 flex-wrap">
-                      <span className="font-medium text-foreground">
-                        {domain}
-                      </span>
-                      <span>•</span>
-                      <span>{readingTime} min read</span>
-                      <span className="ml-auto hidden sm:block">
-                        {formatDistanceToNow(new Date(article.created_at), {
-                          addSuffix: true,
-                        })}
-                      </span>
-                    </div>
-
-                    <p className="text-sm text-muted-foreground line-clamp-2 leading-relaxed">
-                      {article.clean_text || article.original_url}
-                    </p>
-
-                    <TagManager
-                      articleId={article.id}
-                      initialTags={article.tags}
-                      onTagsChange={(tags) =>
-                        handleTagsChange(article.id, tags)
-                      }
-                    />
-
-                    <div className="flex items-center gap-3 mt-3">
-                      <Badge
-                        variant="secondary"
-                        className="flex items-center gap-1.5 font-normal"
-                      >
-                        {getStatusIcon(article.status)}
-                        <span className="capitalize">{article.status}</span>
-                      </Badge>
-
-                      <div className="flex items-center gap-2">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-8 px-2 text-muted-foreground hover:text-foreground"
-                          asChild
-                        >
-                          <a
-                            href={article.original_url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                          >
-                            <FileText className="h-4 w-4 mr-1.5" />
-                            Read
-                          </a>
-                        </Button>
-
-                        {article.status === "completed" &&
-                          article.audio_url && (
-                            <>
-                              {currentArticle?.id === article.id &&
-                              isPlaying ? (
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="h-8 px-2 text-primary hover:text-primary font-medium"
-                                  onClick={(e) => {
-                                    e.preventDefault();
-                                    togglePlay();
-                                  }}
-                                >
-                                  Playing
-                                </Button>
-                              ) : (
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="h-8 px-2 text-muted-foreground hover:text-foreground"
-                                  onClick={(e) => {
-                                    e.preventDefault();
-                                    playArticle(article as any);
-                                  }}
-                                >
-                                  <Play className="h-4 w-4 mr-1.5" />
-                                  Listen
-                                </Button>
-                              )}
-                            </>
-                          )}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 text-muted-foreground bg-background/80 backdrop-blur-sm"
-                      >
-                        <MoreHorizontal className="h-5 w-5" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-48">
-                      <DropdownMenuSub>
-                        <DropdownMenuSubTrigger>
-                          <FolderPlus className="mr-2 h-4 w-4" />
-                          Move to Collection
-                        </DropdownMenuSubTrigger>
-                        <DropdownMenuPortal>
-                          <DropdownMenuSubContent>
-                            <DropdownMenuItem
-                              onClick={() =>
-                                handleMoveToCollection(article, null)
-                              }
-                            >
-                              None (Remove)
-                            </DropdownMenuItem>
-                            {collections.map((grp) => (
-                              <DropdownMenuItem
-                                key={grp.id}
-                                onClick={() =>
-                                  handleMoveToCollection(article, grp.id)
-                                }
-                              >
-                                {grp.name}
-                              </DropdownMenuItem>
-                            ))}
-                          </DropdownMenuSubContent>
-                        </DropdownMenuPortal>
-                      </DropdownMenuSub>
-                      <DropdownMenuItem onClick={() => handleArchive(article)}>
-                        {article.is_archived ? (
-                          <>
-                            <RotateCcw className="mr-2 h-4 w-4" />
-                            Unarchive
-                          </>
-                        ) : (
-                          <>
-                            <Archive className="mr-2 h-4 w-4" />
-                            Archive
-                          </>
-                        )}
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        className="text-red-600"
-                        onClick={() => handleDelete(article)}
-                      >
-                        <Trash2 className="mr-2 h-4 w-4" />
-                        Delete
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
+    <DndContext
+      sensors={sensors}
+      collisionDetection={closestCenter}
+      onDragEnd={handleDragEnd}
+    >
+      <SortableContext
+        items={filteredArticles.map((a) => a.id)}
+        strategy={verticalListSortingStrategy}
+      >
+        <div className="space-y-3">
+          {filteredArticles.length === 0 ? (
+            <Card>
+              <CardContent className="py-10 text-center text-muted-foreground">
+                {view === "inbox"
+                  ? "No articles in inbox. Add one above!"
+                  : "No archived articles."}
               </CardContent>
             </Card>
-          );
-        })
-      )}
-    </div>
+          ) : (
+            filteredArticles.map((article) => (
+              <SortableArticle
+                key={article.id}
+                article={article}
+                currentArticle={currentArticle}
+                isPlaying={isPlaying}
+                togglePlay={togglePlay}
+                playArticle={playArticle}
+                getStatusIcon={getStatusIcon}
+                handleTagsChange={handleTagsChange}
+                handleMoveToCollection={handleMoveToCollection}
+                handleArchive={handleArchive}
+                handleDelete={handleDelete}
+                collections={collections}
+              />
+            ))
+          )}
+        </div>
+      </SortableContext>
+    </DndContext>
   );
 }

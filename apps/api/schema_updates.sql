@@ -46,3 +46,10 @@ create index if not exists idx_articles_collection_id on articles(collection_id)
 
 -- Disable RLS for collections
 alter table collections disable row level security;
+
+-- Add sort_order to articles
+alter table articles 
+add column if not exists sort_order double precision default extract(epoch from now());
+
+-- Index for sorting
+create index if not exists idx_articles_sort_order on articles(sort_order);
