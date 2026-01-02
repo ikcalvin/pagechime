@@ -108,9 +108,10 @@ app.put("/api/articles/:id", requireAuth, async (req, res) => {
             .eq("id", id)
             .eq("user_id", userId)
             .select()
-            .single();
+            .maybeSingle();
 
         if (error) throw error;
+        if (!data) return res.status(404).json({ error: "Article not found" });
 
         res.json(data);
     } catch (err: any) {

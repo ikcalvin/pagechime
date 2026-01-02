@@ -82,7 +82,7 @@ interface SortableArticleProps {
   isPlaying: boolean;
   togglePlay: () => void;
   playArticle: (article: Article) => void;
-  getStatusIcon: (status: Article["status"]) => JSX.Element;
+  getStatusIcon: (status: Article["status"]) => React.JSX.Element;
   handleTagsChange: (id: string, tags: Tag[]) => void;
   handleMoveToCollection: (
     article: Article,
@@ -137,15 +137,15 @@ function SortableArticle({
       } border-b border-border/40 py-6 select-none`}
     >
       <div
-        className={`group relative flex items-start gap-6 transition-all ${
-          isDragging ? "pl-2" : ""
+        className={`group relative flex items-start gap-4 sm:gap-6 transition-all pl-6 sm:pl-8 ${
+          isDragging ? "bg-muted/30" : ""
         }`}
       >
-        {/* Drag Handle - Adjusted position */}
+        {/* Drag Handle - Centered on thumbnail */}
         <div
           {...attributes}
           {...listeners}
-          className={`absolute -left-8 top-1 cursor-grab active:cursor-grabbing p-1.5 rounded-md text-muted-foreground/30 hover:text-foreground hover:bg-muted/50 transition-colors ${
+          className={`absolute left-1 top-10 cursor-grab active:cursor-grabbing p-1.5 rounded-md text-muted-foreground/40 hover:text-foreground transition-colors ${
             isDragging ? "opacity-100" : "opacity-0 group-hover:opacity-100"
           }`}
         >
