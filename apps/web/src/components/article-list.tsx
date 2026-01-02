@@ -32,6 +32,7 @@ import { Badge } from "@/components/ui/badge";
 import api from "@/utils/api";
 import { usePlayer } from "@/context/player-context";
 import { TagManager } from "./tag-manager";
+import { TagMenu } from "./tag-menu";
 import {
   DndContext,
   closestCenter,
@@ -219,6 +220,11 @@ function SortableArticle({
                     </DropdownMenuSubContent>
                   </DropdownMenuPortal>
                 </DropdownMenuSub>
+                <TagMenu
+                  articleId={article.id}
+                  initialTags={article.tags}
+                  onTagsChange={(tags) => handleTagsChange(article.id, tags)}
+                />
                 <DropdownMenuItem onClick={() => handleArchive(article)}>
                   {article.is_archived ? (
                     <>
@@ -267,6 +273,7 @@ function SortableArticle({
               articleId={article.id}
               initialTags={article.tags}
               onTagsChange={(tags) => handleTagsChange(article.id, tags)}
+              showAddButton={false}
             />
 
             {/* Status / Play Controls */}
