@@ -132,145 +132,152 @@ function SortableArticle({
     <div
       ref={setNodeRef}
       style={style}
-      className={isDragging ? "opacity-50" : ""}
+      className={`${
+        isDragging ? "opacity-50" : ""
+      } border-b border-border/40 py-6 select-none`}
     >
-      <Card
-        className={`group relative overflow-visible transition-all hover:shadow-md ${
-          isDragging ? "shadow-xl ring-2 ring-primary/20 scale-[1.02]" : ""
+      <div
+        className={`group relative flex items-start gap-6 transition-all ${
+          isDragging ? "pl-2" : ""
         }`}
       >
-        <CardContent className="p-3 flex items-start gap-4">
-          {/* Drag Handle - Visible on hover or when dragging */}
-          <div
-            {...attributes}
-            {...listeners}
-            className={`mt-2 -ml-2 cursor-grab active:cursor-grabbing p-1.5 rounded-md text-muted-foreground/40 hover:text-foreground hover:bg-muted/50 transition-colors ${
-              isDragging ? "opacity-100" : "opacity-0 group-hover:opacity-100"
-            }`}
-          >
-            <GripVertical className="h-4 w-4" />
-          </div>
+        {/* Drag Handle - Adjusted position */}
+        <div
+          {...attributes}
+          {...listeners}
+          className={`absolute -left-8 top-1 cursor-grab active:cursor-grabbing p-1.5 rounded-md text-muted-foreground/30 hover:text-foreground hover:bg-muted/50 transition-colors ${
+            isDragging ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+          }`}
+        >
+          <GripVertical className="h-4 w-4" />
+        </div>
 
-          {/* Thumbnail Image */}
-          {article.image_url && (
-            <div className="shrink-0">
-              <div className="h-20 w-20 sm:h-24 sm:w-24 rounded-md overflow-hidden bg-muted relative border border-border/50">
-                <img
-                  src={article.image_url}
-                  alt={article.title}
-                  className="h-full w-full object-cover transition-transform group-hover:scale-105"
-                  onError={(e) => {
-                    e.currentTarget.style.display = "none";
-                  }}
-                />
-              </div>
+        {/* Thumbnail */}
+        {article.image_url && (
+          <div className="shrink-0 hidden sm:block">
+            <div className="h-24 w-24 rounded-sm overflow-hidden bg-muted border border-border/50">
+              <img
+                src={article.image_url}
+                alt={article.title}
+                className="h-full w-full object-cover transition-transform group-hover:scale-105"
+                onError={(e) => {
+                  e.currentTarget.style.display = "none";
+                }}
+              />
             </div>
-          )}
+          </div>
+        )}
 
-          {/* Content */}
-          <div className="flex-1 min-w-0 flex flex-col gap-1.5">
-            <div className="flex items-start justify-between gap-4">
-              <h3 className="font-semibold text-base leading-snug text-foreground line-clamp-2">
+        {/* Content */}
+        <div className="flex-1 min-w-0 flex flex-col gap-2">
+          <div className="flex items-start justify-between gap-4">
+            <a
+              href={article.original_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="block group/title"
+            >
+              <h3 className="font-serif text-xl font-medium leading-tight text-foreground group-hover/title:underline decoration-border/50 underline-offset-4">
                 {article.title || "Untitled Article"}
               </h3>
+            </a>
 
-              {/* Actions Menu */}
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-6 w-6 -mr-1 shrink-0 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity"
-                  >
-                    <MoreHorizontal className="h-4 w-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-48">
-                  <DropdownMenuSub>
-                    <DropdownMenuSubTrigger>
-                      <FolderPlus className="mr-2 h-4 w-4" />
-                      Move to Collection
-                    </DropdownMenuSubTrigger>
-                    <DropdownMenuPortal>
-                      <DropdownMenuSubContent>
+            {/* Actions Menu - Simplified */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 -mr-2 shrink-0 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity"
+                >
+                  <MoreHorizontal className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-48">
+                <DropdownMenuSub>
+                  <DropdownMenuSubTrigger>
+                    <FolderPlus className="mr-2 h-4 w-4" />
+                    Move to Collection
+                  </DropdownMenuSubTrigger>
+                  <DropdownMenuPortal>
+                    <DropdownMenuSubContent>
+                      <DropdownMenuItem
+                        onClick={() => handleMoveToCollection(article, null)}
+                      >
+                        None (Remove)
+                      </DropdownMenuItem>
+                      {collections.map((grp) => (
                         <DropdownMenuItem
-                          onClick={() => handleMoveToCollection(article, null)}
+                          key={grp.id}
+                          onClick={() =>
+                            handleMoveToCollection(article, grp.id)
+                          }
                         >
-                          None (Remove)
+                          {grp.name}
                         </DropdownMenuItem>
-                        {collections.map((grp) => (
-                          <DropdownMenuItem
-                            key={grp.id}
-                            onClick={() =>
-                              handleMoveToCollection(article, grp.id)
-                            }
-                          >
-                            {grp.name}
-                          </DropdownMenuItem>
-                        ))}
-                      </DropdownMenuSubContent>
-                    </DropdownMenuPortal>
-                  </DropdownMenuSub>
-                  <DropdownMenuItem onClick={() => handleArchive(article)}>
-                    {article.is_archived ? (
-                      <>
-                        <RotateCcw className="mr-2 h-4 w-4" />
-                        Unarchive
-                      </>
-                    ) : (
-                      <>
-                        <Archive className="mr-2 h-4 w-4" />
-                        Archive
-                      </>
-                    )}
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    className="text-red-600"
-                    onClick={() => handleDelete(article)}
-                  >
-                    <Trash2 className="mr-2 h-4 w-4" />
-                    Delete
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
+                      ))}
+                    </DropdownMenuSubContent>
+                  </DropdownMenuPortal>
+                </DropdownMenuSub>
+                <DropdownMenuItem onClick={() => handleArchive(article)}>
+                  {article.is_archived ? (
+                    <>
+                      <RotateCcw className="mr-2 h-4 w-4" />
+                      Unarchive
+                    </>
+                  ) : (
+                    <>
+                      <Archive className="mr-2 h-4 w-4" />
+                      Archive
+                    </>
+                  )}
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  className="text-red-600"
+                  onClick={() => handleDelete(article)}
+                >
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Delete
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
 
-            <div className="flex items-center text-xs text-muted-foreground gap-2">
-              <span className="font-medium text-foreground truncate max-w-[120px]">
-                {domain}
-              </span>
-              <span>•</span>
-              <span>{readingTime} min read</span>
-              <span className="hidden sm:inline">
-                •{" "}
-                {formatDistanceToNow(new Date(article.created_at), {
-                  addSuffix: true,
-                })}
-              </span>
-            </div>
+          <div className="flex items-center text-sm text-muted-foreground gap-2 font-light">
+            <span className="text-foreground/80 font-medium">{domain}</span>
+            <span>·</span>
+            <span>{readingTime} min read</span>
+            <span className="hidden sm:inline">
+              ·{" "}
+              {formatDistanceToNow(new Date(article.created_at), {
+                addSuffix: true,
+              })}
+            </span>
+          </div>
 
+          {/* Excerpt if present (simulated for now since clean_text is full) */}
+          {article.clean_text && (
+            <p className="text-muted-foreground text-sm line-clamp-2 leading-relaxed max-w-3xl">
+              {article.clean_text?.substring(0, 200)}...
+            </p>
+          )}
+
+          <div className="flex items-center gap-3 mt-2">
             <TagManager
               articleId={article.id}
               initialTags={article.tags}
               onTagsChange={(tags) => handleTagsChange(article.id, tags)}
             />
 
-            <div className="flex items-center gap-2 mt-1">
-              <Badge
-                variant="outline"
-                className="flex items-center gap-1.5 font-normal h-6 text-[10px] px-2"
-              >
-                {getStatusIcon(article.status)}
-                <span className="capitalize">{article.status}</span>
-              </Badge>
-
-              {article.status === "completed" && article.audio_url && (
+            {/* Status / Play Controls */}
+            <div className="flex items-center gap-2">
+              {article.status === "completed" && article.audio_url ? (
                 <Button
-                  variant="ghost"
+                  variant="secondary"
                   size="sm"
-                  className={`h-6 px-2 text-[10px] uppercase tracking-wide font-medium ${
+                  className={`h-7 rounded-sm px-3 text-[11px] font-medium transition-colors ${
                     currentArticle?.id === article.id && isPlaying
-                      ? "text-primary hover:text-primary/80"
+                      ? "bg-primary text-primary-foreground hover:bg-primary/90"
                       : "text-muted-foreground hover:text-foreground"
                   }`}
                   onClick={(e) => {
@@ -284,19 +291,34 @@ function SortableArticle({
                 >
                   {currentArticle?.id === article.id && isPlaying ? (
                     <>
-                      Playing <span className="ml-1 animate-pulse">●</span>
+                      <span className="mr-2 relative flex h-2 w-2">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-2 w-2 bg-white"></span>
+                      </span>
+                      Playing
                     </>
                   ) : (
                     <>
-                      <Play className="h-3 w-3 mr-1" /> Listen
+                      <Play className="h-3 w-3 mr-1.5" /> Listen
                     </>
                   )}
                 </Button>
+              ) : (
+                <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                  {getStatusIcon(article.status)}
+                  <span className="capitalize">{article.status}</span>
+                </div>
               )}
             </div>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+
+        {/* Thumbnail - Right aligned now for standard blog feel, or left? User screenshot had it left but minimal. Let's stick to Right for a "clean" list look often seen, or re-evaluate. 
+             Actually, checking the generated code above, I placed it *after* the content div if I put it here.
+             The user's screenshot had a small square image on the RIGHT in the "other" screenshot usually found in these lists (like Medium).
+             Let's try putting it on the right.
+         */}
+      </div>
     </div>
   );
 }
