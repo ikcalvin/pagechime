@@ -29,6 +29,7 @@ type PlayerContextType = {
   progress: number;
   duration: number;
   seek: (time: number) => void;
+  setIsPlaying: (playing: boolean) => void;
 };
 
 const PlayerContext = createContext<PlayerContextType | undefined>(undefined);
@@ -81,6 +82,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         progress,
         duration,
         seek,
+        setIsPlaying,
       }}
     >
       {children}

@@ -14,8 +14,8 @@ export function MediaPlayer() {
     togglePlay,
     audioRef,
     progress,
-    seek, // We will need to implement seek in context or handle it here if context exposes setters, but context exposed audioRef.
-    // Actually, let's keep logic simple. The context provides the ref, this component renders the audio tag.
+    seek,
+    setIsPlaying,
   } = usePlayer();
 
   // Local state for progress to avoid too many re-renders in context if we were storing it there,
@@ -31,7 +31,7 @@ export function MediaPlayer() {
     const updateTime = () => setCurrentTime(audio.currentTime);
     const updateDuration = () => setDuration(audio.duration);
     const onEnded = () => {
-      // Handle end of playback if needed
+      setIsPlaying(false);
     };
 
     audio.addEventListener("timeupdate", updateTime);
