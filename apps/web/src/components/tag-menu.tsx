@@ -3,15 +3,20 @@
 import React, { useState } from "react";
 import { Tag as TagIcon, Plus, Check } from "lucide-react";
 import {
-  DropdownMenuItem,
   DropdownMenuSub,
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
   DropdownMenuPortal,
-  DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+  CommandSeparator,
+} from "@/components/ui/command";
 import { useArticleTags, Tag } from "./tag-manager";
 
 type TagMenuProps = {
@@ -45,6 +50,14 @@ export function TagMenu({
     }
   };
 
+  const filteredTags = availableTags.filter((tag) =>
+    tag.name.toLowerCase().includes(newTag.toLowerCase())
+  );
+
+  const exactMatch = availableTags.find(
+    (tag) => tag.name.toLowerCase() === newTag.toLowerCase()
+  );
+
   return (
     <DropdownMenuSub>
       <DropdownMenuSubTrigger
@@ -56,67 +69,69 @@ export function TagMenu({
         Tags
       </DropdownMenuSubTrigger>
       <DropdownMenuPortal>
-        <DropdownMenuSubContent className="w-64 p-2">
-          <div className="flex gap-2 mb-2 p-1">
-            <Input
+        <DropdownMenuSubContent className="p-0" sideOffset={4}>
+          <Command shouldFilter={false} className="w-64">
+            <CommandInput
+              placeholder="Filter or create tag..."
               value={newTag}
-              onChange={(e) => setNewTag(e.target.value)}
-              placeholder="New tag..."
-              className="h-8 text-sm"
+              onValueChange={setNewTag}
               onKeyDown={(e) => {
                 if (e.key === "Enter") {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  createTag(newTag);
-                  setNewTag("");
+                  if (
+                    !exactMatch &&
+                    newTag.trim() &&
+                    filteredTags.length === 0
+                  ) {
+                    e.preventDefault();
+                    createTag(newTag);
+                    setNewTag("");
+                  }
                 }
               }}
-              onClick={(e) => e.stopPropagation()}
             />
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                createTag(newTag);
-                setNewTag("");
-              }}
-              className="h-8"
-            >
-              <Plus className="h-4 w-4" />
-            </Button>
-          </div>
+            <CommandList>
+              {filteredTags.length === 0 && !newTag.trim() && (
+                <CommandEmpty>No tags found.</CommandEmpty>
+              )}
 
-          <DropdownMenuSeparator />
+              <CommandGroup
+                heading={filteredTags.length > 0 ? "Available tags" : undefined}
+              >
+                {filteredTags.map((tag) => {
+                  const isSelected = tags.some((t) => t.id === tag.id);
+                  return (
+                    <CommandItem
+                      key={tag.id}
+                      value={tag.name}
+                      onSelect={() => handleToggleTag(tag)}
+                    >
+                      {tag.name}
+                      {isSelected && <Check className="ml-auto h-4 w-4" />}
+                    </CommandItem>
+                  );
+                })}
+              </CommandGroup>
 
-          <div className="max-h-64 overflow-y-auto">
-            <div className="text-xs text-muted-foreground font-medium px-2 py-1.5">
-              Available tags
-            </div>
-            {availableTags.length === 0 && (
-              <div className="text-xs text-muted-foreground px-2 py-1.5">
-                No tags found
-              </div>
-            )}
-
-            {availableTags.map((tag) => {
-              const isSelected = tags.some((t) => t.id === tag.id);
-              return (
-                <DropdownMenuItem
-                  key={tag.id}
-                  onClick={(e) => {
-                    e.preventDefault(); // Keep menu open
-                    handleToggleTag(tag);
-                  }}
-                  className="flex items-center justify-between"
-                >
-                  <span className="truncate">{tag.name}</span>
-                  {isSelected && <Check className="h-4 w-4 ml-2" />}
-                </DropdownMenuItem>
-              );
-            })}
-          </div>
+              {newTag.trim() && !exactMatch && (
+                <>
+                  <CommandSeparator />
+                  <CommandGroup>
+                    <CommandItem
+                      value={`create-${newTag}`}
+                      onSelect={() => {
+                        createTag(newTag);
+                        setNewTag("");
+                      }}
+                      className="flex items-center gap-2"
+                    >
+                      <Plus className="mr-2 h-3 w-3" />
+                      Create tag: "{newTag}"
+                    </CommandItem>
+                  </CommandGroup>
+                </>
+              )}
+            </CommandList>
+          </Command>
         </DropdownMenuSubContent>
       </DropdownMenuPortal>
     </DropdownMenuSub>
