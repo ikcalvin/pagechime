@@ -1,5 +1,6 @@
 "use client";
 
+import { useSearchParams } from "next/navigation";
 import React, { useEffect, useState } from "react";
 import { formatDistanceToNow } from "date-fns";
 import {
@@ -356,12 +357,16 @@ export function ArticleList({
     })
   );
 
+  const searchParams = useSearchParams();
+  const search = searchParams.get("search");
+
   const fetchArticles = async () => {
     try {
       if (articles.length === 0) setLoading(true);
 
       const params: any = {};
       if (collectionId) params.collectionId = collectionId;
+      if (search) params.search = search;
 
       const response = await api.get("/articles", { params });
       setArticles(response.data || []);
@@ -396,7 +401,7 @@ export function ArticleList({
     fetchTags();
     const interval = setInterval(fetchArticles, 10000); // Polling every 10s
     return () => clearInterval(interval);
-  }, [collectionId]);
+  }, [collectionId, search]);
 
   const updateArticleStatus = async (id: string, updates: Partial<Article>) => {
     setArticles((prev) =>

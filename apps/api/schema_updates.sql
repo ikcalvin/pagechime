@@ -53,3 +53,11 @@ add column if not exists sort_order double precision default extract(epoch from 
 
 -- Index for sorting
 create index if not exists idx_articles_sort_order on articles(sort_order);
+
+-- Enable pg_trgm for text search
+create extension if not exists "pg_trgm";
+
+-- Create GIN indexes for search
+create index if not exists idx_articles_title_gin on articles using gin (title gin_trgm_ops);
+create index if not exists idx_articles_url_gin on articles using gin (original_url gin_trgm_ops);
+create index if not exists idx_articles_clean_text_gin on articles using gin (clean_text gin_trgm_ops);

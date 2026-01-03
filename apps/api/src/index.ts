@@ -138,6 +138,11 @@ app.get("/api/articles", requireAuth, async (req, res) => {
             query = query.eq("collection_id", req.query.collectionId);
         }
 
+        if (req.query.search) {
+            const searchTerm = req.query.search as string;
+            query = query.or(`title.ilike.%${searchTerm}%,original_url.ilike.%${searchTerm}%,clean_text.ilike.%${searchTerm}%`);
+        }
+
         const { data, error } = await query;
 
         // Transform data if necessary, though Supabase returns tags as an array of objects which is good
