@@ -18,6 +18,9 @@ export type Article = {
   audio_url?: string;
   clean_text?: string;
   image_url?: string;
+  tags?: { id: string; name: string }[];
+  is_archived?: boolean;
+  is_deleted?: boolean;
 };
 
 type PlayerContextType = {
