@@ -17,6 +17,7 @@ import {
   FolderPlus,
   GripVertical,
 } from "lucide-react";
+import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import {
   DropdownMenu,
@@ -177,16 +178,11 @@ function SortableArticle({
         {/* Content */}
         <div className="flex-1 min-w-0 flex flex-col gap-2">
           <div className="flex items-start justify-between gap-4">
-            <a
-              href={article.original_url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="block group/title"
-            >
+            <Link href={`/article/${article.id}`} className="block group/title">
               <h3 className="font-serif text-xl font-medium leading-tight text-foreground group-hover/title:underline decoration-border/50 underline-offset-4">
                 {article.title || "Untitled Article"}
               </h3>
-            </a>
+            </Link>
 
             {/* Actions Menu - Simplified */}
             <DropdownMenu>

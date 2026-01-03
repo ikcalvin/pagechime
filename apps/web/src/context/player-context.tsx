@@ -9,7 +9,7 @@ import React, {
   useEffect,
 } from "react";
 
-type Article = {
+export type Article = {
   id: string;
   title: string;
   original_url: string;

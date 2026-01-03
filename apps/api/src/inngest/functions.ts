@@ -45,7 +45,7 @@ export const processArticle = inngest.createFunction(
                 .from("articles")
                 .update({
                     title: article.title,
-                    clean_text: article.textContent,
+                    clean_text: article.content, // Save HTML for Reader Mode
                     image_url: ogImage, // Save image URL
                     status: "processing",
                 })
@@ -55,7 +55,7 @@ export const processArticle = inngest.createFunction(
 
             return {
                 title: article.title,
-                text: article.textContent,
+                text: article.textContent, // Return Plain text for TTS
             };
         });
 

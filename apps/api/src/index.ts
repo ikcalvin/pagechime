@@ -153,6 +153,30 @@ app.get("/api/articles", requireAuth, async (req, res) => {
     }
 });
 
+// Get single article
+app.get("/api/articles/:id", requireAuth, async (req, res) => {
+    try {
+        const { id } = req.params;
+        // @ts-ignore
+        const userId = req.user.id;
+
+        const { data, error } = await supabase
+            .from("articles")
+            .select("*, tags(*)")
+            .eq("id", id)
+            .eq("user_id", userId)
+            .single();
+
+        if (error) throw error;
+        if (!data) return res.status(404).json({ error: "Article not found" });
+
+        res.json(data);
+    } catch (err: any) {
+        console.error("Error fetching article:", err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
 // Tags API
 
 // Get all tags
