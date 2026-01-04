@@ -173,10 +173,28 @@ export default function ArticleReaderPage() {
 
   const domain = new URL(article.original_url).hostname.replace("www.", "");
 
+  const themeClasses = {
+    light: "bg-background text-foreground",
+    sepia: "bg-[#f4ecd8] text-[#5b4636]",
+    dark: "bg-slate-900 text-slate-100",
+    black: "bg-black text-zinc-300",
+  }[settings.theme];
+
+  const borderClass = {
+    light: "border-border",
+    sepia: "border-[#e6dbbf]",
+    dark: "border-slate-800",
+    black: "border-zinc-800",
+  }[settings.theme];
+
   return (
-    <div className="min-h-screen bg-background">
+    <div
+      className={`min-h-screen transition-colors duration-300 ${themeClasses}`}
+    >
       {/* Navigation Bar */}
-      <nav className="sticky top-0 z-50 border-b bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/60">
+      <nav
+        className={`sticky top-0 z-50 border-b backdrop-blur supports-backdrop-filter:bg-opacity-90 ${borderClass} bg-inherit/95`}
+      >
         <div className="container max-w-3xl mx-auto h-14 flex items-center justify-between px-4">
           <Button variant="ghost" size="sm" onClick={() => router.back()}>
             <ChevronLeft className="mr-1 h-4 w-4" />
@@ -251,14 +269,7 @@ export default function ArticleReaderPage() {
       </nav>
 
       {/* Article Content */}
-      <main
-        className={`transition-colors duration-300 min-h-screen
-          ${settings.theme === "light" ? "bg-background text-foreground" : ""}
-          ${settings.theme === "sepia" ? "bg-[#f4ecd8] text-[#5b4636]" : ""}
-          ${settings.theme === "dark" ? "bg-slate-900 text-slate-100" : ""}
-          ${settings.theme === "black" ? "bg-black text-zinc-300" : ""}
-        `}
-      >
+      <main className="transition-colors duration-300 min-h-screen">
         <div
           className={`container mx-auto px-6 py-12 md:py-16 transition-all duration-300 ${
             settings.width === "wide" ? "max-w-4xl" : "max-w-2xl"
@@ -282,17 +293,7 @@ export default function ArticleReaderPage() {
             }}
           >
             {/* Header */}
-            <header
-              className={`mb-10 not-prose border-b pb-10 ${
-                settings.theme === "sepia"
-                  ? "border-[#e6dbbf]"
-                  : settings.theme === "dark"
-                  ? "border-slate-800"
-                  : settings.theme === "black"
-                  ? "border-zinc-800"
-                  : "border-border"
-              }`}
-            >
+            <header className={`mb-10 not-prose border-b pb-10 ${borderClass}`}>
               <h1
                 className="leading-[1.1] tracking-tight font-black mb-6"
                 style={{ fontSize: "2.5em" }}
