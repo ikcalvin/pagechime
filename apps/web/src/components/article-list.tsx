@@ -135,6 +135,14 @@ function SortableArticle({
     Math.ceil((article.clean_text?.split(/\s+/).length || 0) / 200)
   );
 
+  // Strip HTML for snippet
+  const stripHtml = (html: string) => {
+    if (typeof window === "undefined") return html; // fallback for server-side (though this is client component)
+    const tmp = document.createElement("DIV");
+    tmp.innerHTML = html;
+    return tmp.textContent || tmp.innerText || "";
+  };
+
   return (
     <div
       ref={setNodeRef}
@@ -267,7 +275,7 @@ function SortableArticle({
           {/* Excerpt if present (simulated for now since clean_text is full) */}
           {article.clean_text && (
             <p className="text-muted-foreground text-sm line-clamp-2 leading-relaxed max-w-3xl">
-              {article.clean_text?.substring(0, 200)}...
+              {stripHtml(article.clean_text).substring(0, 200)}...
             </p>
           )}
 
