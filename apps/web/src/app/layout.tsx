@@ -22,11 +22,6 @@ export const metadata: Metadata = {
 
 // import Header from "@/components/header"; // Removed
 import { Toaster } from "@/components/ui/sonner";
-import { PlayerProvider } from "@/context/player-context";
-import { MediaPlayer } from "@/components/media-player";
-import { CollectionProvider } from "@/context/collection-context";
-import { ThemeSynchronizer } from "@/components/theme-synchronizer";
-import { ReaderSettingsProvider } from "@/context/use-reader-settings";
 
 export default function RootLayout({
   children,
@@ -38,16 +33,8 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased text-foreground`}
       >
-        <ReaderSettingsProvider>
-          <PlayerProvider>
-            <CollectionProvider>
-              <ThemeSynchronizer />
-              {children}
-              <MediaPlayer />
-              <Toaster />
-            </CollectionProvider>
-          </PlayerProvider>
-        </ReaderSettingsProvider>
+        {children}
+        <Toaster />
       </body>
     </html>
   );
