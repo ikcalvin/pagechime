@@ -65,7 +65,11 @@ export default function SignupPage() {
         <CardContent className="grid gap-4">
           <form action={formAction} className="grid gap-4">
             {state?.error && (
-              <div className="p-3 bg-red-50 border border-red-200 rounded-md text-sm text-red-600">
+              <div
+                className="p-3 bg-red-50 border border-red-200 rounded-md text-sm text-red-600"
+                role="alert"
+                aria-atomic="true"
+              >
                 {state.error}
               </div>
             )}
