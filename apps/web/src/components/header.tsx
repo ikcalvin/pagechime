@@ -14,6 +14,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { SignOutMenuItem } from "@/components/sign-out-menu-item";
+import { MobileNav } from "@/components/mobile-nav";
 
 export default async function Header() {
   const supabase = await createClient();
@@ -24,24 +25,27 @@ export default async function Header() {
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container mx-auto flex items-center gap-4 p-4 h-16">
-        <Link href="/" className="shrink-0 flex items-center">
-          <Image
-            src="/pagechime_logo_black.svg"
-            alt="PageChime"
-            width={103}
-            height={32}
-            className="h-8 w-auto dark:hidden"
-            priority
-          />
-          <Image
-            src="/pagechime_logo_white.svg"
-            alt="PageChime"
-            width={103}
-            height={32}
-            className="h-8 w-auto hidden dark:block"
-            priority
-          />
-        </Link>
+        <div className="flex items-center shrink-0">
+          <MobileNav />
+          <Link href="/" className="flex items-center">
+            <Image
+              src="/pagechime_logo_black.svg"
+              alt="PageChime"
+              width={103}
+              height={32}
+              className="h-8 w-auto dark:hidden"
+              priority
+            />
+            <Image
+              src="/pagechime_logo_white.svg"
+              alt="PageChime"
+              width={103}
+              height={32}
+              className="h-8 w-auto hidden dark:block"
+              priority
+            />
+          </Link>
+        </div>
         <div className="flex-1 max-w-2xl mx-auto">
           <SearchBar />
         </div>
