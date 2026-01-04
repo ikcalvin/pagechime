@@ -89,7 +89,7 @@ app.post("/api/articles", requireAuth, async (req, res) => {
 });
 
 // Update article (Archive/Delete/Reorder)
-app.put("/api/articles/:id", requireAuth, async (req, res) => {
+const updateArticleHandler = async (req: express.Request, res: express.Response) => {
     try {
         const { id } = req.params;
         const { is_archived, is_deleted, sort_order } = req.body;
@@ -118,7 +118,11 @@ app.put("/api/articles/:id", requireAuth, async (req, res) => {
         console.error("Error updating article:", err);
         res.status(500).json({ error: err.message });
     }
-});
+};
+
+// Update article (Archive/Delete/Reorder)
+app.put("/api/articles/:id", requireAuth, updateArticleHandler);
+app.patch("/api/articles/:id", requireAuth, updateArticleHandler);
 
 app.get("/api/articles", requireAuth, async (req, res) => {
     try {

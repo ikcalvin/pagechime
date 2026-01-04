@@ -151,7 +151,7 @@ export default function ArticleReaderPage() {
 
       await api.patch(`/articles/${article.id}`, { is_archived: !isArchived });
       setArticle({ ...article, is_archived: !isArchived } as any);
-      router.refresh();
+      router.push("/");
     } catch (e) {
       console.error("Failed to archive", e);
     }
