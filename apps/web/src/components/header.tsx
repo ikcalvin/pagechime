@@ -31,18 +31,23 @@ export default async function Header() {
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container mx-auto flex items-center gap-4 p-4 h-16">
-        <Link
-          href="/"
-          className="font-bold text-xl shrink-0 flex items-center gap-1 text-foreground"
-        >
+        <Link href="/" className="shrink-0 flex items-center">
           <Image
-            src="/pagechime-icon.png"
+            src="/pagechime_logo_black.svg"
             alt="PageChime"
-            width={32}
+            width={103}
             height={32}
-            className="w-8 h-8"
+            className="h-8 w-auto dark:hidden"
+            priority
           />
-          <span>ageChime</span>
+          <Image
+            src="/pagechime_logo_white.svg"
+            alt="PageChime"
+            width={103}
+            height={32}
+            className="h-8 w-auto hidden dark:block"
+            priority
+          />
         </Link>
         <div className="flex-1 max-w-2xl mx-auto">
           <SearchBar />
