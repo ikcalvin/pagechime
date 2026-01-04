@@ -83,6 +83,37 @@ export default function ArticleReaderPage() {
     DEFAULT_SETTINGS
   );
 
+  /* Sync theme with body/html for scrollbar and overscroll area */
+  useEffect(() => {
+    const themeColors = {
+      light: "hsl(var(--background))", // Using CSS variable for consistency
+      sepia: "#f4ecd8",
+      dark: "#0f172a", // slate-900
+      black: "#000000",
+    };
+
+    const colorScheme = {
+      light: "light",
+      sepia: "light",
+      dark: "dark",
+      black: "dark",
+    };
+
+    const bg = themeColors[settings.theme];
+    const scheme = colorScheme[settings.theme];
+
+    document.documentElement.style.backgroundColor = bg;
+    document.documentElement.style.colorScheme = scheme;
+    document.body.style.backgroundColor = bg;
+
+    // Cleanup function to reset to default when leaving
+    return () => {
+      document.documentElement.style.backgroundColor = "";
+      document.documentElement.style.colorScheme = "";
+      document.body.style.backgroundColor = "";
+    };
+  }, [settings.theme]);
+
   // For TagMenu - create a wrapper since TagMenu is built for DropdownMenuSub but we might want it in a main Dropdown
   // Actually TagMenu uses DropdownMenuSub, so it must be inside a DropdownMenu.
   // We can wrap it in a root DropdownMenu just for the trigger.
