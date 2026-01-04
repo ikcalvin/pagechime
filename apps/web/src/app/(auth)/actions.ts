@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
+import { cookies } from 'next/headers'
 
 import { createClient } from '@/utils/supabase/server'
 
@@ -22,7 +23,17 @@ export async function login(formData: FormData) {
     const { error } = await supabase.auth.signInWithPassword(data)
 
     if (error) {
-        redirect('/login?error=Could not authenticate user')
+        const cookieStore = await cookies()
+        cookieStore.set({
+            name: 'auth-error',
+            value: 'Could not authenticate user',
+            httpOnly: true,
+            path: '/',
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'lax',
+            maxAge: 60,
+        })
+        redirect('/login')
     }
 
     revalidatePath('/', 'layout')
@@ -35,7 +46,11 @@ export async function login(formData: FormData) {
  *
  * @param formData - The form data containing email and password.
  */
-export async function signup(formData: FormData) {
+type State = {
+    error: string | null;
+}
+
+export async function signup(prevState: State | null, formData: FormData): Promise<State> {
     const supabase = await createClient()
 
     const data = {
@@ -46,7 +61,7 @@ export async function signup(formData: FormData) {
     const { error } = await supabase.auth.signUp(data)
 
     if (error) {
-        redirect('/signup?error=Could not create user')
+        return { error: error.message }
     }
 
     revalidatePath('/', 'layout')
@@ -59,6 +74,17 @@ export async function signup(formData: FormData) {
  */
 export async function signOut() {
     const supabase = await createClient()
-    await supabase.auth.signOut()
+    const { error } = await supabase.auth.signOut()
+
+    if (error) {
+        console.error('Sign out failed:', error)
+        return { error: error.message }
+    }
+
     redirect('/login')
+}
+
+export async function deleteAuthErrorCookie() {
+    const cookieStore = await cookies()
+    cookieStore.delete('auth-error')
 }

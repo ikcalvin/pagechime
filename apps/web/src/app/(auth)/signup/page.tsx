@@ -1,3 +1,7 @@
+"use client";
+
+import { useActionState } from "react";
+import { useFormStatus } from "react-dom";
 import { signup } from "../actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,7 +17,19 @@ import {
 import Link from "next/link";
 import Image from "next/image";
 
+function SubmitButton() {
+  const { pending } = useFormStatus();
+
+  return (
+    <Button type="submit" className="w-full h-10" disabled={pending}>
+      {pending ? "Signing Up..." : "Sign Up"}
+    </Button>
+  );
+}
+
 export default function SignupPage() {
+  const [state, formAction] = useActionState(signup, { error: null });
+
   return (
     <div className="flex h-screen w-full flex-col items-center justify-center p-4">
       <div className="mb-8 flex flex-col items-center gap-2">
@@ -47,7 +63,12 @@ export default function SignupPage() {
           </CardDescription>
         </CardHeader>
         <CardContent className="grid gap-4">
-          <form className="grid gap-4">
+          <form action={formAction} className="grid gap-4">
+            {state?.error && (
+              <div className="p-3 bg-red-50 border border-red-200 rounded-md text-sm text-red-600">
+                {state.error}
+              </div>
+            )}
             <div className="grid gap-2">
               <Label htmlFor="email" className="sr-only">
                 Email
@@ -77,9 +98,7 @@ export default function SignupPage() {
                 className="h-10"
               />
             </div>
-            <Button formAction={signup} className="w-full h-10">
-              Sign Up
-            </Button>
+            <SubmitButton />
           </form>
         </CardContent>
         <CardFooter className="flex flex-col gap-2 border-t pt-4">
@@ -96,7 +115,7 @@ export default function SignupPage() {
       </Card>
 
       <p className="px-8 text-center text-sm text-muted-foreground mt-4">
-        By clicking continue, you agree to our{" "}
+        By clicking &apos;Sign Up&apos;, you agree to our{" "}
         <Link
           href="/terms"
           className="underline underline-offset-4 hover:text-primary"
