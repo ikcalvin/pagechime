@@ -1,5 +1,6 @@
 import { ArticleList } from "@/components/article-list";
 import { Sidebar } from "@/components/sidebar";
+import { Suspense } from "react";
 import { createClient } from "@/utils/supabase/server";
 import { redirect } from "next/navigation";
 
@@ -19,7 +20,9 @@ export default async function Home() {
       <div className="flex-1 flex flex-col min-h-screen">
         <main className="flex-1 p-4">
           <div className="max-w-5xl mx-auto">
-            <ArticleList view="inbox" />
+            <Suspense fallback={<div>Loading...</div>}>
+              <ArticleList view="inbox" />
+            </Suspense>
           </div>
         </main>
       </div>

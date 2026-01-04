@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { createClient } from "@/utils/supabase/server";
 import { Button } from "@/components/ui/button";
 import { redirect } from "next/navigation";
@@ -30,8 +31,18 @@ export default async function Header() {
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container mx-auto flex items-center gap-4 p-4 h-16">
-        <Link href="/" className="font-bold text-xl shrink-0">
-          PageChime
+        <Link
+          href="/"
+          className="font-bold text-xl shrink-0 flex items-center gap-1 text-foreground"
+        >
+          <Image
+            src="/pagechime-icon.png"
+            alt="PageChime"
+            width={32}
+            height={32}
+            className="w-8 h-8"
+          />
+          <span>ageChime</span>
         </Link>
         <div className="flex-1 max-w-2xl mx-auto">
           <SearchBar />

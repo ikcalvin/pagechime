@@ -22,6 +22,8 @@ import { Toaster } from "@/components/ui/sonner";
 import { PlayerProvider } from "@/context/player-context";
 import { MediaPlayer } from "@/components/media-player";
 import { CollectionProvider } from "@/context/collection-context";
+import { ThemeSynchronizer } from "@/components/theme-synchronizer";
+import { ReaderSettingsProvider } from "@/context/use-reader-settings";
 
 export default function RootLayout({
   children,
@@ -31,15 +33,18 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased text-foreground`}
       >
-        <PlayerProvider>
-          <CollectionProvider>
-            {children}
-            <MediaPlayer />
-            <Toaster />
-          </CollectionProvider>
-        </PlayerProvider>
+        <ReaderSettingsProvider>
+          <PlayerProvider>
+            <CollectionProvider>
+              <ThemeSynchronizer />
+              {children}
+              <MediaPlayer />
+              <Toaster />
+            </CollectionProvider>
+          </PlayerProvider>
+        </ReaderSettingsProvider>
       </body>
     </html>
   );

@@ -30,47 +30,9 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-function useLocalStorage<T>(key: string, initialValue: T) {
-  const [storedValue, setStoredValue] = useState<T>(initialValue);
+import { useReaderSettings } from "@/context/use-reader-settings";
 
-  useEffect(() => {
-    try {
-      if (typeof window !== "undefined") {
-        const item = window.localStorage.getItem(key);
-        if (item) {
-          setStoredValue(JSON.parse(item));
-        }
-      }
-    } catch (error) {
-      console.log(error);
-    }
-  }, [key]);
-
-  const setValue = useCallback(
-    (value: T | ((val: T) => T)) => {
-      try {
-        const valueToStore =
-          value instanceof Function ? value(storedValue) : value;
-        setStoredValue(valueToStore);
-        if (typeof window !== "undefined") {
-          window.localStorage.setItem(key, JSON.stringify(valueToStore));
-        }
-      } catch (error) {
-        console.log(error);
-      }
-    },
-    [key, storedValue]
-  );
-
-  return [storedValue, setValue] as const;
-}
-
-const DEFAULT_SETTINGS: ReaderSettings = {
-  font: "serif",
-  fontSize: 20, // 1.25rem = 20px base
-  theme: "light",
-  width: "standard",
-};
+// ... (existing imports)
 
 export default function ArticleReaderPage() {
   const { id } = useParams();
@@ -78,45 +40,10 @@ export default function ArticleReaderPage() {
   const [article, setArticle] = useState<Article | null>(null);
   const [loading, setLoading] = useState(true);
   const { playArticle } = usePlayer();
-  const [settings, setSettings] = useLocalStorage<ReaderSettings>(
-    "reader-settings",
-    DEFAULT_SETTINGS
-  );
 
-  /* Sync theme with body/html for scrollbar and overscroll area */
-  useEffect(() => {
-    const themeColors = {
-      light: "hsl(var(--background))", // Using CSS variable for consistency
-      sepia: "#f4ecd8",
-      dark: "#0f172a", // slate-900
-      black: "#000000",
-    };
+  const { settings, updateSettings } = useReaderSettings();
+  const setSettings = updateSettings; // Alias for compatibility with existing code
 
-    const colorScheme = {
-      light: "light",
-      sepia: "light",
-      dark: "dark",
-      black: "dark",
-    };
-
-    const bg = themeColors[settings.theme];
-    const scheme = colorScheme[settings.theme];
-
-    document.documentElement.style.backgroundColor = bg;
-    document.documentElement.style.colorScheme = scheme;
-    document.body.style.backgroundColor = bg;
-
-    // Cleanup function to reset to default when leaving
-    return () => {
-      document.documentElement.style.backgroundColor = "";
-      document.documentElement.style.colorScheme = "";
-      document.body.style.backgroundColor = "";
-    };
-  }, [settings.theme]);
-
-  // For TagMenu - create a wrapper since TagMenu is built for DropdownMenuSub but we might want it in a main Dropdown
-  // Actually TagMenu uses DropdownMenuSub, so it must be inside a DropdownMenu.
-  // We can wrap it in a root DropdownMenu just for the trigger.
   const [availableTags, setAvailableTags] = useState<any[]>([]);
 
   // Fetch tags for TagMenu
@@ -204,28 +131,10 @@ export default function ArticleReaderPage() {
 
   const domain = new URL(article.original_url).hostname.replace("www.", "");
 
-  const themeClasses = {
-    light: "bg-background text-foreground",
-    sepia: "bg-[#f4ecd8] text-[#5b4636]",
-    dark: "bg-slate-900 text-slate-100",
-    black: "bg-black text-zinc-300",
-  }[settings.theme];
-
-  const borderClass = {
-    light: "border-border",
-    sepia: "border-[#e6dbbf]",
-    dark: "border-slate-800",
-    black: "border-zinc-800",
-  }[settings.theme];
-
   return (
-    <div
-      className={`min-h-screen transition-colors duration-300 ${themeClasses}`}
-    >
+    <div className="min-h-screen transition-colors duration-300 bg-background text-foreground">
       {/* Navigation Bar */}
-      <nav
-        className={`sticky top-0 z-50 border-b backdrop-blur supports-backdrop-filter:bg-opacity-90 ${borderClass} bg-inherit/95`}
-      >
+      <nav className="sticky top-0 z-50 border-b backdrop-blur supports-backdrop-filter:bg-opacity-90 border-border bg-background/95">
         <div className="container max-w-3xl mx-auto h-14 flex items-center justify-between px-4">
           <Button variant="ghost" size="sm" onClick={() => router.back()}>
             <ChevronLeft className="mr-1 h-4 w-4" />
@@ -324,7 +233,7 @@ export default function ArticleReaderPage() {
             }}
           >
             {/* Header */}
-            <header className={`mb-10 not-prose border-b pb-10 ${borderClass}`}>
+            <header className={`mb-10 not-prose border-b pb-10 border-border`}>
               <h1
                 className="leading-[1.1] tracking-tight font-black mb-6"
                 style={{ fontSize: "2.5em" }}
