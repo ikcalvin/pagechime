@@ -1,4 +1,4 @@
-import { login, deleteAuthErrorCookie } from "../actions";
+import { login } from "../actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -19,10 +19,6 @@ import { cookies } from "next/headers";
 export default async function LoginPage() {
   const cookieStore = await cookies();
   const error = cookieStore.get("auth-error")?.value;
-
-  if (error) {
-    await deleteAuthErrorCookie();
-  }
 
   return (
     <div className="flex h-screen w-full flex-col items-center justify-center p-4">
