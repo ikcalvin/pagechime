@@ -13,7 +13,13 @@ import {
 import Link from "next/link";
 import Image from "next/image";
 
-export default function LoginPage() {
+import { AuthErrorMessage } from "./auth-error-message";
+import { cookies } from "next/headers";
+
+export default async function LoginPage() {
+  const cookieStore = await cookies();
+  const error = cookieStore.get("auth-error")?.value;
+
   return (
     <div className="flex h-screen w-full flex-col items-center justify-center p-4">
       <div className="mb-8 flex flex-col items-center gap-2">
@@ -47,6 +53,7 @@ export default function LoginPage() {
           </CardDescription>
         </CardHeader>
         <CardContent className="grid gap-4">
+          {error && <AuthErrorMessage message={error} />}
           <form className="grid gap-4">
             <div className="grid gap-2">
               <Label htmlFor="email" className="sr-only">
@@ -96,7 +103,7 @@ export default function LoginPage() {
       </Card>
 
       <p className="px-8 text-center text-sm text-muted-foreground mt-4">
-        By clicking continue, you agree to our{" "}
+        By clicking &apos;Sign In&apos;, you agree to our{" "}
         <Link
           href="/terms"
           className="underline underline-offset-4 hover:text-primary"
