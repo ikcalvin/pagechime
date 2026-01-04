@@ -2,31 +2,24 @@ import Link from "next/link";
 import Image from "next/image";
 import { createClient } from "@/utils/supabase/server";
 import { Button } from "@/components/ui/button";
-import { redirect } from "next/navigation";
+
 import { AddArticleDialog } from "@/components/add-article-form";
 import { SearchBar } from "@/components/search-bar";
 import { Plus, User } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { SignOutMenuItem } from "@/components/sign-out-menu-item";
 
 export default async function Header() {
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
-
-  const signOut = async () => {
-    "use server";
-    const supabase = await createClient();
-    await supabase.auth.signOut();
-    redirect("/");
-  };
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -77,11 +70,7 @@ export default async function Header() {
                     {user.email}
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem asChild>
-                    <form action={signOut} className="w-full">
-                      <button className="w-full text-left">Sign Out</button>
-                    </form>
-                  </DropdownMenuItem>
+                  <SignOutMenuItem />
                 </DropdownMenuContent>
               </DropdownMenu>
             </>
