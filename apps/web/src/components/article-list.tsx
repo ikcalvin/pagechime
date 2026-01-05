@@ -450,6 +450,18 @@ export function ArticleList({
     return true;
   });
 
+  const filteredCollections = search
+    ? collections.filter((c) =>
+        c.name.toLowerCase().includes(search.toLowerCase())
+      )
+    : [];
+
+  const filteredTags = search
+    ? availableTags.filter((t) =>
+        t.name.toLowerCase().includes(search.toLowerCase())
+      )
+    : [];
+
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
 
@@ -530,46 +542,92 @@ export function ArticleList({
   }
 
   return (
-    <DndContext
-      sensors={sensors}
-      collisionDetection={closestCenter}
-      onDragEnd={handleDragEnd}
-    >
-      <SortableContext
-        items={filteredArticles.map((a) => a.id)}
-        strategy={verticalListSortingStrategy}
+    <div className="space-y-6">
+      {search &&
+        (filteredCollections.length > 0 || filteredTags.length > 0) && (
+          <div className="space-y-4">
+            {filteredCollections.length > 0 && (
+              <div>
+                <h3 className="mb-2 text-sm font-medium text-muted-foreground uppercase tracking-wider">
+                  Collections
+                </h3>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  {filteredCollections.map((collection) => (
+                    <Link
+                      key={collection.id}
+                      href={`/collection/${collection.id}`}
+                      className="flex flex-col gap-1 p-3 rounded-lg border bg-card text-card-foreground shadow-sm hover:bg-accent hover:text-accent-foreground transition-colors"
+                    >
+                      <div className="font-semibold">{collection.name}</div>
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {filteredTags.length > 0 && (
+              <div>
+                <h3 className="mb-2 text-sm font-medium text-muted-foreground uppercase tracking-wider">
+                  Tags
+                </h3>
+                <div className="flex flex-wrap gap-2">
+                  {filteredTags.map((tag) => (
+                    <div
+                      key={tag.id}
+                      className="inline-flex items-center rounded-md border border-transparent bg-secondary px-2.5 py-0.5 text-xs font-semibold text-secondary-foreground hover:bg-secondary/80 transition-colors"
+                    >
+                      #{tag.name.replace(/^#/, "")}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCenter}
+        onDragEnd={handleDragEnd}
       >
-        <div className="space-y-3">
-          {filteredArticles.length === 0 ? (
-            <Card>
-              <CardContent className="py-10 text-center text-muted-foreground">
-                {view === "inbox"
-                  ? "No articles in inbox. Add one above!"
-                  : "No archived articles."}
-              </CardContent>
-            </Card>
-          ) : (
-            filteredArticles.map((article) => (
-              <SortableArticle
-                key={article.id}
-                article={article}
-                currentArticle={currentArticle}
-                isPlaying={isPlaying}
-                togglePlay={togglePlay}
-                playArticle={playArticle}
-                getStatusIcon={getStatusIcon}
-                handleTagsChange={handleTagsChange}
-                handleMoveToCollection={handleMoveToCollection}
-                handleArchive={handleArchive}
-                handleDelete={handleDelete}
-                collections={collections}
-                availableTags={availableTags}
-                onRefreshTags={fetchTags}
-              />
-            ))
-          )}
-        </div>
-      </SortableContext>
-    </DndContext>
+        <SortableContext
+          items={filteredArticles.map((a) => a.id)}
+          strategy={verticalListSortingStrategy}
+        >
+          <div className="space-y-3">
+            {filteredArticles.length === 0 ? (
+              <Card>
+                <CardContent className="py-10 text-center text-muted-foreground">
+                  {view === "inbox"
+                    ? search
+                      ? "No articles found matching your search."
+                      : "No articles in inbox. Add one above!"
+                    : "No matching archived articles."}
+                </CardContent>
+              </Card>
+            ) : (
+              filteredArticles.map((article) => (
+                <SortableArticle
+                  key={article.id}
+                  article={article}
+                  currentArticle={currentArticle}
+                  isPlaying={isPlaying}
+                  togglePlay={togglePlay}
+                  playArticle={playArticle}
+                  getStatusIcon={getStatusIcon}
+                  handleTagsChange={handleTagsChange}
+                  handleMoveToCollection={handleMoveToCollection}
+                  handleArchive={handleArchive}
+                  handleDelete={handleDelete}
+                  collections={collections}
+                  availableTags={availableTags}
+                  onRefreshTags={fetchTags}
+                />
+              ))
+            )}
+          </div>
+        </SortableContext>
+      </DndContext>
+    </div>
   );
 }

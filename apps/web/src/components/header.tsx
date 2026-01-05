@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 
 import { AddArticleDialog } from "@/components/add-article-form";
 import { SearchBar } from "@/components/search-bar";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { Plus, User } from "lucide-react";
 import {
   DropdownMenu,
@@ -52,6 +53,7 @@ export default async function Header() {
         <div className="flex items-center gap-4 shrink-0">
           {user ? (
             <>
+              <ThemeToggle />
               <AddArticleDialog>
                 <Button size="sm">
                   <Plus className="mr-2 h-4 w-4" />

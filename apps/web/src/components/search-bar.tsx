@@ -39,7 +39,7 @@ export function SearchBar() {
       <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
       <Input
         type="search"
-        placeholder="Search articles..."
+        placeholder="Search articles, tags, or collections..."
         className="w-full bg-background pl-9 md:w-[300px] lg:w-[300px]"
         value={term}
         onChange={(e) => handleSearch(e.target.value)}
