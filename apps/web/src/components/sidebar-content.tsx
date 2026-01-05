@@ -11,6 +11,7 @@ import {
   Collection,
 } from "@/components/create-collection-dialog";
 import { useCollections } from "@/context/collection-context";
+import { useTags } from "@/hooks/use-tags";
 
 const sidebarItems = [
   { icon: Home, label: "Home", href: "/" },
@@ -25,6 +26,7 @@ interface SidebarContentProps {
 export function SidebarContent({ className, onNavigate }: SidebarContentProps) {
   const pathname = usePathname();
   const { collections } = useCollections();
+  const { tags } = useTags();
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
 
   const handleCollectionCreated = (newCollection: Collection) => {
@@ -113,15 +115,23 @@ export function SidebarContent({ className, onNavigate }: SidebarContentProps) {
           </div>
         </div>
 
-        <div className="mt-2 text-muted-foreground">
-          <Button
-            variant="ghost"
-            className="w-full justify-start gap-3 px-2 text-base font-medium text-muted-foreground hover:text-foreground"
-          >
-            <Tag className="h-5 w-5" />
-            Tags
-          </Button>
-        </div>
+        {tags.length > 0 && (
+          <div className="pt-4">
+            <h3 className="mb-2 px-2 text-sm font-medium text-muted-foreground uppercase tracking-wider">
+              Tags
+            </h3>
+            <div className="flex flex-wrap gap-2 px-2">
+              {tags.map((tag) => (
+                <div
+                  key={tag.id}
+                  className="inline-flex items-center rounded-md border border-transparent bg-secondary px-2.5 py-0.5 text-xs font-semibold text-secondary-foreground hover:bg-secondary/80 transition-colors"
+                >
+                  #{tag.name.replace(/^#/, "")}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </nav>
 
       <CreateCollectionDialog

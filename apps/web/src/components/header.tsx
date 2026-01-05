@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 
 import { AddArticleDialog } from "@/components/add-article-form";
 import { SearchBar } from "@/components/search-bar";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { Plus, User } from "lucide-react";
 import {
   DropdownMenu,
@@ -25,7 +26,7 @@ export default async function Header() {
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container mx-auto flex items-center gap-4 p-4 h-16">
-        <div className="flex items-center shrink-0">
+        <div className="flex items-center shrink-0 lg:w-56">
           <MobileNav />
           <Link href="/" className="flex items-center">
             <Image
@@ -46,12 +47,13 @@ export default async function Header() {
             />
           </Link>
         </div>
-        <div className="flex-1 max-w-2xl mx-auto">
+        <div className="flex-1 mx-auto px-4">
           <SearchBar />
         </div>
         <div className="flex items-center gap-4 shrink-0">
           {user ? (
             <>
+              <ThemeToggle />
               <AddArticleDialog>
                 <Button size="sm">
                   <Plus className="mr-2 h-4 w-4" />
