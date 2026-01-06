@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { AddArticleDialog } from "@/components/add-article-form";
@@ -37,6 +38,8 @@ import { cn } from "@/lib/utils";
 
 export function HeaderContent({ user }: { user: any }) {
   const { scrollDirection, scrollY } = useScrollDirection();
+  const pathname = usePathname();
+  const isSettingsPage = pathname === "/settings";
   const isHidden = scrollDirection === "down" && scrollY > 50;
 
   return (
@@ -46,10 +49,34 @@ export function HeaderContent({ user }: { user: any }) {
         <div className="container mx-auto flex items-center gap-4 p-4 h-16 relative z-20 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
           <div className="flex items-center shrink-0 lg:w-56">
             <MobileNav />
-            <Link
-              href="/"
-              className="flex items-center absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 md:static md:transform-none md:translate-x-0 md:translate-y-0"
-            >
+            {/* Mobile: Logo or Page Title */}
+            <div className="md:hidden absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
+              {isSettingsPage ? (
+                <span className="font-semibold text-lg">Settings</span>
+              ) : (
+                <Link href="/" className="flex items-center">
+                  <Image
+                    src="/pagechime_logo_black.svg"
+                    alt="PageChime"
+                    width={103}
+                    height={32}
+                    className="h-8 w-auto dark:hidden"
+                    priority
+                  />
+                  <Image
+                    src="/pagechime_logo_white.svg"
+                    alt="PageChime"
+                    width={103}
+                    height={32}
+                    className="h-8 w-auto hidden dark:block"
+                    priority
+                  />
+                </Link>
+              )}
+            </div>
+
+            {/* Desktop: Always Logo */}
+            <Link href="/" className="hidden md:flex items-center">
               <Image
                 src="/pagechime_logo_black.svg"
                 alt="PageChime"
@@ -69,9 +96,20 @@ export function HeaderContent({ user }: { user: any }) {
             </Link>
           </div>
 
-          {/* Desktop Search */}
-          <div className="hidden md:block flex-1 mx-auto px-4">
-            <SearchBar />
+          {/* Desktop Center: Search or Page Title */}
+          <div
+            className={cn(
+              "hidden md:flex flex-1 px-4 items-center",
+              isSettingsPage ? "justify-start" : "justify-center mx-auto"
+            )}
+          >
+            {isSettingsPage ? (
+              <span className="font-semibold text-lg text-foreground/80">
+                Settings
+              </span>
+            ) : (
+              <SearchBar />
+            )}
           </div>
 
           <div className="absolute right-4 md:static flex items-center gap-4 shrink-0 ml-auto md:ml-0">
@@ -80,15 +118,17 @@ export function HeaderContent({ user }: { user: any }) {
                 <div className="hidden md:block">
                   <ThemeToggle />
                 </div>
-                <div className="hidden md:block">
-                  <AddArticleDialog>
-                    <Button size="sm">
-                      <Plus className="mr-2 h-4 w-4" />
-                      <span className="hidden sm:inline">Add Link</span>
-                      <span className="sm:hidden">Add</span>
-                    </Button>
-                  </AddArticleDialog>
-                </div>
+                {!isSettingsPage && (
+                  <div className="hidden md:block">
+                    <AddArticleDialog>
+                      <Button size="sm">
+                        <Plus className="mr-2 h-4 w-4" />
+                        <span className="hidden sm:inline">Add Link</span>
+                        <span className="sm:hidden">Add</span>
+                      </Button>
+                    </AddArticleDialog>
+                  </div>
+                )}
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button
@@ -143,21 +183,23 @@ export function HeaderContent({ user }: { user: any }) {
         {/* Mobile Search & Tags Row - Collapsible */}
         <div
           className={cn(
-            "md:hidden overflow-hidden transition-all duration-300 ease-in-out bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60",
-            isHidden
+            "md:hidden overflow-hidden transition-all duration-300 ease-in-out bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/60",
+            isHidden || isSettingsPage
               ? "max-h-0 opacity-0 border-none"
               : "max-h-40 opacity-100 border-t"
           )}
         >
-          <div className="container mx-auto px-4 py-3 space-y-3">
-            <SearchBar />
-            <TagFilterBar />
-          </div>
+          {!isSettingsPage && (
+            <div className="container mx-auto px-4 py-3 space-y-3">
+              <SearchBar />
+              <TagFilterBar />
+            </div>
+          )}
         </div>
       </header>
 
       {/* Mobile FAB */}
-      {user && (
+      {user && !isSettingsPage && (
         <div className="md:hidden fixed bottom-20 right-4 z-50">
           <AddArticleDialog>
             <Button
