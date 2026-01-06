@@ -119,7 +119,10 @@ export function MediaPlayer() {
                 size="icon"
                 className="h-8 w-8"
                 onClick={() => {
-                  if (audioRef.current) audioRef.current.currentTime -= 10;
+                  if (audioRef.current) {
+                    audioRef.current.currentTime -= 10;
+                    setCurrentTime(audioRef.current.currentTime);
+                  }
                 }}
               >
                 <SkipBack className="h-4 w-4" />
@@ -142,7 +145,10 @@ export function MediaPlayer() {
                 size="icon"
                 className="h-8 w-8"
                 onClick={() => {
-                  if (audioRef.current) audioRef.current.currentTime += 10;
+                  if (audioRef.current) {
+                    audioRef.current.currentTime += 10;
+                    setCurrentTime(audioRef.current.currentTime);
+                  }
                 }}
               >
                 <SkipForward className="h-4 w-4" />
