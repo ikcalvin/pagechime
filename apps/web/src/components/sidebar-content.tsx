@@ -12,6 +12,7 @@ import {
 } from "@/components/create-collection-dialog";
 import { useCollections } from "@/context/collection-context";
 import { useTags } from "@/hooks/use-tags";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 const sidebarItems = [
   { icon: Home, label: "Home", href: "/" },
@@ -133,6 +134,10 @@ export function SidebarContent({ className, onNavigate }: SidebarContentProps) {
           </div>
         )}
       </nav>
+
+      <div className="mt-auto px-2">
+        <ThemeToggle />
+      </div>
 
       <CreateCollectionDialog
         open={createDialogOpen}
