@@ -143,6 +143,13 @@ function SortableArticle({
     return tmp.textContent || tmp.innerText || "";
   };
 
+  const [isImageVisible, setIsImageVisible] = useState(true);
+
+  // Reset visibility when article changes (though component likely remounts due to key)
+  useEffect(() => {
+    setIsImageVisible(true);
+  }, [article.image_url]);
+
   return (
     <div
       ref={setNodeRef}
@@ -309,16 +316,15 @@ function SortableArticle({
         </div>
 
         {/* Thumbnail - Right aligned */}
-        {article.image_url && (
+        {article.image_url && isImageVisible && (
           <div className="shrink-0 block ml-2">
             <div className="h-20 w-20 sm:h-28 sm:w-28 rounded-lg overflow-hidden bg-muted border border-border/50 shadow-sm">
               <img
                 src={article.image_url}
                 alt={article.title}
                 className="h-full w-full object-cover transition-transform group-hover:scale-105"
-                onError={(e) => {
-                  e.currentTarget.style.display = "none";
-                }}
+                onLoad={() => setIsImageVisible(true)}
+                onError={() => setIsImageVisible(false)}
               />
             </div>
           </div>

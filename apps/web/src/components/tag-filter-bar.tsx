@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import api from "@/utils/api";
 
@@ -14,9 +14,9 @@ export function TagFilterBar() {
   const [tags, setTags] = useState<Tag[]>([]);
   const searchParams = useSearchParams();
   const router = useRouter();
+  const pathname = usePathname();
   const currentSearch = searchParams.get("search") || "";
-  const activeTag =
-    tags.find((tag) => currentSearch.includes(tag.name))?.name || "";
+  const activeTag = tags.find((tag) => currentSearch === tag.name)?.name || "";
 
   useEffect(() => {
     const fetchTags = async () => {
@@ -39,7 +39,7 @@ export function TagFilterBar() {
     } else {
       params.set("search", tagName);
     }
-    router.push(`?${params.toString()}`);
+    router.push(`${pathname}?${params.toString()}`);
   };
 
   if (tags.length === 0) return null;

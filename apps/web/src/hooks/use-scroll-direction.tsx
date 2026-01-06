@@ -1,12 +1,15 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 
 export function useScrollDirection() {
   const [scrollDirection, setScrollDirection] = useState<"up" | "down" | null>(
     null
   );
-  const [scrollY, setScrollY] = useState(0);
+  const [scrollY, setScrollY] = useState(() =>
+    typeof window !== "undefined" ? window.scrollY : 0
+  );
+  const scrollDirectionRef = useRef(scrollDirection);
 
   useEffect(() => {
     let lastScrollY = window.scrollY;
@@ -15,20 +18,21 @@ export function useScrollDirection() {
       const currentScrollY = window.scrollY;
       const direction = currentScrollY > lastScrollY ? "down" : "up";
       if (
-        direction !== scrollDirection &&
+        direction !== scrollDirectionRef.current &&
         Math.abs(currentScrollY - lastScrollY) > 10
       ) {
         setScrollDirection(direction);
+        scrollDirectionRef.current = direction;
       }
       setScrollY(currentScrollY);
       lastScrollY = currentScrollY > 0 ? currentScrollY : 0;
     };
 
-    window.addEventListener("scroll", updateScrollDirection); // note: passive: true by default in some browsers but good to be explicit if performing heavy logic, here it's simple state.
+    window.addEventListener("scroll", updateScrollDirection);
     return () => {
       window.removeEventListener("scroll", updateScrollDirection);
     };
-  }, [scrollDirection]);
+  }, []);
 
   return { scrollDirection, scrollY };
 }
