@@ -6,14 +6,29 @@ import { Button } from "@/components/ui/button";
 import { AddArticleDialog } from "@/components/add-article-form";
 import { SearchBar } from "@/components/search-bar";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { Plus, User } from "lucide-react";
+import {
+  Plus,
+  User,
+  Settings,
+  Shield,
+  FileText,
+  Sun,
+  Moon,
+  Palette,
+} from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuSub,
+  DropdownMenuSubTrigger,
+  DropdownMenuSubContent,
 } from "@/components/ui/dropdown-menu";
+import { useReaderSettings, ReaderTheme } from "@/context/use-reader-settings";
 import { SignOutMenuItem } from "@/components/sign-out-menu-item";
 import { MobileNav } from "@/components/mobile-nav";
 import { TagFilterBar } from "./tag-filter-bar";
@@ -84,11 +99,34 @@ export function HeaderContent({ user }: { user: any }) {
                       <User className="h-5 w-5" />
                     </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
+                  <DropdownMenuContent align="end" className="w-56">
                     <DropdownMenuLabel>My Account</DropdownMenuLabel>
                     <DropdownMenuLabel className="font-normal text-xs text-muted-foreground">
                       {user.email}
                     </DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuGroup>
+                      <DropdownMenuItem asChild>
+                        <Link href="/settings">
+                          <Settings className="mr-2 h-4 w-4" />
+                          <span>Settings</span>
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild>
+                        <Link href="/privacy">
+                          <Shield className="mr-2 h-4 w-4" />
+                          <span>Privacy</span>
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild>
+                        <Link href="/terms">
+                          <FileText className="mr-2 h-4 w-4" />
+                          <span>Terms</span>
+                        </Link>
+                      </DropdownMenuItem>
+                    </DropdownMenuGroup>
+                    <DropdownMenuSeparator />
+                    <UserThemeSubMenu />
                     <DropdownMenuSeparator />
                     <SignOutMenuItem />
                   </DropdownMenuContent>
@@ -133,5 +171,42 @@ export function HeaderContent({ user }: { user: any }) {
         </div>
       )}
     </>
+  );
+}
+
+function UserThemeSubMenu() {
+  const { settings, updateSettings, mounted } = useReaderSettings();
+
+  if (!mounted) return null;
+
+  const setTheme = (theme: ReaderTheme) => {
+    updateSettings({ ...settings, theme });
+  };
+
+  return (
+    <DropdownMenuSub>
+      <DropdownMenuSubTrigger>
+        <Palette className="mr-2 h-4 w-4" />
+        <span>Theme</span>
+      </DropdownMenuSubTrigger>
+      <DropdownMenuSubContent>
+        <DropdownMenuItem onClick={() => setTheme("light")}>
+          <Sun className="mr-2 h-4 w-4" />
+          <span>Light</span>
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => setTheme("dark")}>
+          <Moon className="mr-2 h-4 w-4" />
+          <span>Dark</span>
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => setTheme("sepia")}>
+          <div className="mr-2 h-4 w-4 rounded-full bg-[#f4ecd8] border border-stone-300" />
+          <span>Sepia</span>
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => setTheme("black")}>
+          <div className="mr-2 h-4 w-4 rounded-full bg-black border border-stone-700" />
+          <span>Black</span>
+        </DropdownMenuItem>
+      </DropdownMenuSubContent>
+    </DropdownMenuSub>
   );
 }
