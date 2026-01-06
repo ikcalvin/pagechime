@@ -317,7 +317,7 @@ function SortableArticle({
 
         {/* Thumbnail - Right aligned */}
         {article.image_url && isImageVisible && (
-          <div className="shrink-0 block ml-2">
+          <div className="shrink-0 block ml-2 md:ml-0 md:order-first">
             <div className="h-20 w-20 sm:h-28 sm:w-28 rounded-lg overflow-hidden bg-muted border border-border/50 shadow-sm">
               <img
                 src={article.image_url}
