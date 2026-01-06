@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { SignOutMenuItem } from "@/components/sign-out-menu-item";
 import { MobileNav } from "@/components/mobile-nav";
+import { HeaderContent } from "@/components/header-content";
 
 export default async function Header() {
   const supabase = await createClient();
@@ -23,70 +24,5 @@ export default async function Header() {
     data: { user },
   } = await supabase.auth.getUser();
 
-  return (
-    <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="container mx-auto flex items-center gap-4 p-4 h-16">
-        <div className="flex items-center shrink-0 lg:w-56">
-          <MobileNav />
-          <Link href="/" className="flex items-center">
-            <Image
-              src="/pagechime_logo_black.svg"
-              alt="PageChime"
-              width={103}
-              height={32}
-              className="h-8 w-auto dark:hidden"
-              priority
-            />
-            <Image
-              src="/pagechime_logo_white.svg"
-              alt="PageChime"
-              width={103}
-              height={32}
-              className="h-8 w-auto hidden dark:block"
-              priority
-            />
-          </Link>
-        </div>
-        <div className="flex-1 mx-auto px-4">
-          <SearchBar />
-        </div>
-        <div className="flex items-center gap-4 shrink-0">
-          {user ? (
-            <>
-              <ThemeToggle />
-              <AddArticleDialog>
-                <Button size="sm">
-                  <Plus className="mr-2 h-4 w-4" />
-                  Add Link
-                </Button>
-              </AddArticleDialog>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="rounded-full h-8 w-8 bg-muted"
-                  >
-                    <User className="h-5 w-5" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuLabel>My Account</DropdownMenuLabel>
-                  <DropdownMenuLabel className="font-normal text-xs text-muted-foreground">
-                    {user.email}
-                  </DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  <SignOutMenuItem />
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </>
-          ) : (
-            <Link href="/login">
-              <Button size="sm">Login</Button>
-            </Link>
-          )}
-        </div>
-      </div>
-    </header>
-  );
+  return <HeaderContent user={user} />;
 }

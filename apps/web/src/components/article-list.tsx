@@ -33,7 +33,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import api from "@/utils/api";
 import { usePlayer } from "@/context/player-context";
-import { TagManager } from "./tag-manager";
+
 import { TagMenu } from "./tag-menu";
 import {
   DndContext,
@@ -167,27 +167,11 @@ function SortableArticle({
           <GripVertical className="h-4 w-4" />
         </div>
 
-        {/* Thumbnail */}
-        {article.image_url && (
-          <div className="shrink-0 hidden sm:block">
-            <div className="h-24 w-24 rounded-sm overflow-hidden bg-muted border border-border/50">
-              <img
-                src={article.image_url}
-                alt={article.title}
-                className="h-full w-full object-cover transition-transform group-hover:scale-105"
-                onError={(e) => {
-                  e.currentTarget.style.display = "none";
-                }}
-              />
-            </div>
-          </div>
-        )}
-
         {/* Content */}
         <div className="flex-1 min-w-0 flex flex-col gap-2">
           <div className="flex items-start justify-between gap-4">
             <Link href={`/article/${article.id}`} className="block group/title">
-              <h3 className="font-serif text-xl font-medium leading-tight text-foreground group-hover/title:underline decoration-border/50 underline-offset-4">
+              <h3 className="font-serif text-xl font-medium leading-tight text-foreground group-hover/title:underline decoration-border/50 underline-offset-4 line-clamp-3 md:line-clamp-none">
                 {article.title || "Untitled Article"}
               </h3>
             </Link>
@@ -280,13 +264,6 @@ function SortableArticle({
           )}
 
           <div className="flex items-center gap-3 mt-2">
-            <TagManager
-              articleId={article.id}
-              initialTags={article.tags}
-              onTagsChange={(tags) => handleTagsChange(article.id, tags)}
-              showAddButton={false}
-            />
-
             {/* Status / Play Controls */}
             <div className="flex items-center gap-2">
               {article.status === "completed" && article.audio_url ? (
@@ -331,11 +308,21 @@ function SortableArticle({
           </div>
         </div>
 
-        {/* Thumbnail - Right aligned now for standard blog feel, or left? User screenshot had it left but minimal. Let's stick to Right for a "clean" list look often seen, or re-evaluate. 
-             Actually, checking the generated code above, I placed it *after* the content div if I put it here.
-             The user's screenshot had a small square image on the RIGHT in the "other" screenshot usually found in these lists (like Medium).
-             Let's try putting it on the right.
-         */}
+        {/* Thumbnail - Right aligned */}
+        {article.image_url && (
+          <div className="shrink-0 block ml-2">
+            <div className="h-20 w-20 sm:h-28 sm:w-28 rounded-lg overflow-hidden bg-muted border border-border/50 shadow-sm">
+              <img
+                src={article.image_url}
+                alt={article.title}
+                className="h-full w-full object-cover transition-transform group-hover:scale-105"
+                onError={(e) => {
+                  e.currentTarget.style.display = "none";
+                }}
+              />
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
