@@ -135,7 +135,7 @@ export function SidebarContent({ className, onNavigate }: SidebarContentProps) {
         )}
       </nav>
 
-      <div className="mt-auto px-2">
+      <div className="mt-auto px-2 lg:hidden md:hidden">
         <ThemeToggle />
       </div>
 
