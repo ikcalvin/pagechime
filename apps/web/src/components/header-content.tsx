@@ -120,7 +120,7 @@ export function HeaderContent({ user }: { user: any }) {
 
       {/* Mobile FAB */}
       {user && (
-        <div className="md:hidden fixed bottom-30 right-4 z-50">
+        <div className="md:hidden fixed bottom-20 right-4 z-50">
           <AddArticleDialog>
             <Button
               size="icon"
