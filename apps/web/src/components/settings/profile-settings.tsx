@@ -47,59 +47,6 @@ export function ProfileSettings() {
 
   return (
     <div className="divide-y divide-border">
-      {/* Account Section */}
-      <div className="grid md:grid-cols-[240px_1fr] gap-4 md:gap-8 py-8">
-        <div>
-          <h3 className="font-semibold text-lg">Account</h3>
-          <p className="text-sm text-muted-foreground mt-1">
-            Manage your login details and subscription.
-          </p>
-        </div>
-
-        <div className="space-y-1">
-          <SettingsRow
-            label="Email"
-            value="kcalvin@outlook.com"
-            action={
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-8 text-primary hover:text-primary/80"
-              >
-                Change
-              </Button>
-            }
-          />
-          <SettingsRow
-            label="Password"
-            value="••••••••"
-            action={
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-8 text-primary hover:text-primary/80"
-              >
-                Change
-              </Button>
-            }
-          />
-          <SettingsRow
-            label="Subscription"
-            value="Free Plan"
-            border={false}
-            action={
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-8 text-primary hover:text-primary/80"
-              >
-                Upgrade
-              </Button>
-            }
-          />
-        </div>
-      </div>
-
       {/* Profile Section */}
       <div className="grid md:grid-cols-[240px_1fr] gap-4 md:gap-8 py-8">
         <div>
