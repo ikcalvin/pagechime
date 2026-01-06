@@ -141,6 +141,10 @@ export function TagManager({
   const [newTag, setNewTag] = useState("");
   const [isOpen, setIsOpen] = useState(false);
 
+  if (tags.length === 0 && !showAddButton) {
+    return null;
+  }
+
   return (
     <div className="flex flex-wrap gap-2 items-center mt-2">
       {tags.map((tag) => (
