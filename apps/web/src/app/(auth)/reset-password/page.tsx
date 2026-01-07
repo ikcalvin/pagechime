@@ -47,6 +47,11 @@ function ResetPasswordForm() {
     }
   }, [state?.success, router]);
 
+  const hasToken = !!token;
+
+  // Local validation error message if token is missing (before submission)
+  const tokenError = !hasToken ? "Invalid or missing reset token." : null;
+
   return (
     <div className="flex h-screen w-full flex-col items-center justify-center p-4">
       <div className="mb-8 flex flex-col items-center gap-2">
@@ -81,6 +86,7 @@ function ResetPasswordForm() {
         </CardHeader>
         <CardContent className="grid gap-4">
           <form action={formAction} className="grid gap-4">
+            <input type="hidden" name="token" value={token || ""} />
             {state?.success && (
               <div
                 className="p-3 bg-green-50 border border-green-200 rounded-md text-sm text-green-600"
@@ -90,13 +96,13 @@ function ResetPasswordForm() {
                 {state.message}
               </div>
             )}
-            {state?.error && (
+            {(state?.error || tokenError) && (
               <div
                 className="p-3 bg-red-50 border border-red-200 rounded-md text-sm text-red-600"
                 role="alert"
                 aria-atomic="true"
               >
-                {state.error}
+                {state?.error || tokenError}
               </div>
             )}
             <div className="grid gap-2">
@@ -110,6 +116,7 @@ function ResetPasswordForm() {
                 placeholder="New Password"
                 required
                 className="h-10"
+                disabled={!hasToken}
               />
             </div>
             <div className="grid gap-2">
@@ -123,16 +130,18 @@ function ResetPasswordForm() {
                 placeholder="Confirm Password"
                 required
                 className="h-10"
+                disabled={!hasToken}
               />
             </div>
-            <SubmitButton />
+            <fieldset disabled={!hasToken} className="contents">
+              <SubmitButton />
+            </fieldset>
           </form>
         </CardContent>
       </Card>
     </div>
   );
 }
-
 export default function ResetPasswordPage() {
   return (
     <Suspense
