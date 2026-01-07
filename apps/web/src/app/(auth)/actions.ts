@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
-import { cookies } from 'next/headers'
+import { cookies, headers } from 'next/headers'
 
 import { createClient } from '@/utils/supabase/server'
 
@@ -162,10 +162,11 @@ export async function updatePassword(prevState: State | null, formData: FormData
 
 export async function loginWithGoogle() {
     const supabase = await createClient()
+    const origin = (await headers()).get('origin')
     const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-            redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/auth/callback?next=/`,
+            redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || origin || 'http://localhost:3000'}/auth/callback?next=/`,
         },
     })
 
@@ -190,10 +191,11 @@ export async function loginWithGoogle() {
 
 export async function loginWithApple() {
     const supabase = await createClient()
+    const origin = (await headers()).get('origin')
     const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'apple',
         options: {
-            redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/auth/callback?next=/`,
+            redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || origin || 'http://localhost:3000'}/auth/callback?next=/`,
         },
     })
 
