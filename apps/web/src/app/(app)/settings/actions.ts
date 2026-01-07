@@ -76,5 +76,38 @@ export async function updatePassword(prevState: ActionState, formData: FormData)
     }
 
     revalidatePath('/settings')
+    revalidatePath('/settings')
     return { success: 'Password updated successfully' }
+}
+
+export async function updateProfile(prevState: ActionState, formData: FormData): Promise<ActionState> {
+    const supabase = await createClient()
+
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) {
+        return { error: 'Unauthorized' }
+    }
+
+    const displayName = formData.get('displayName')
+
+    if (typeof displayName !== 'string') {
+        return { error: 'Invalid display name format' }
+    }
+
+    if (!displayName.trim()) {
+        return { error: 'Display name cannot be empty' }
+    }
+
+    const { error } = await supabase.auth.updateUser({
+        data: {
+            full_name: displayName,
+        }
+    })
+
+    if (error) {
+        return { error: error.message }
+    }
+
+    revalidatePath('/', 'layout')
+    return { success: 'Profile updated successfully' }
 }

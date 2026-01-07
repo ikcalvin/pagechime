@@ -34,7 +34,7 @@ export default async function SettingsPage() {
         <div className="max-w-5xl mx-auto w-full p-6 md:p-12 space-y-4">
           <div className="divide-y divide-border">
             <AccountSettings userEmail={user.email || ""} />
-            <ProfileSettings />
+            <ProfileSettings user={user} />
             <VoiceSettings />
             <DataSettings />
             <DangerZone />

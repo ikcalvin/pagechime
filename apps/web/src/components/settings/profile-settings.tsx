@@ -1,10 +1,22 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { User, Upload } from "lucide-react";
+import { User, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import Image from "next/image";
+import { updateProfile } from "@/app/(app)/settings/actions";
+import { toast } from "sonner";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 
 interface SettingsRowProps {
   label: string;
@@ -39,11 +51,24 @@ function SettingsRow({
   );
 }
 
-export function ProfileSettings() {
-  const [isLoading, setIsLoading] = useState(false);
+export function ProfileSettings({ user }: { user?: any }) {
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [displayName, setDisplayName] = useState(
+    user?.user_metadata?.full_name || user?.user_metadata?.name || ""
+  );
+  const [isPending, startTransition] = useTransition();
 
-  // Mock state
-  const [isEditingName, setIsEditingName] = useState(false);
+  const handleUpdateName = async (formData: FormData) => {
+    startTransition(async () => {
+      const result = await updateProfile({}, formData);
+      if (result.error) {
+        toast.error(result.error);
+      } else {
+        toast.success("Profile updated successfully");
+        setIsDialogOpen(false);
+      }
+    });
+  };
 
   return (
     <div className="divide-y divide-border">
@@ -60,8 +85,21 @@ export function ProfileSettings() {
           <SettingsRow
             label="Avatar"
             value={
-              <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center border overflow-hidden">
-                <User className="h-5 w-5 text-muted-foreground" />
+              <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center border overflow-hidden relative">
+                {user?.user_metadata?.avatar_url ||
+                user?.user_metadata?.picture ? (
+                  <Image
+                    src={
+                      user.user_metadata.avatar_url ||
+                      user.user_metadata.picture
+                    }
+                    alt={displayName || "User Avatar"}
+                    fill
+                    className="object-cover"
+                  />
+                ) : (
+                  <User className="h-5 w-5 text-muted-foreground" />
+                )}
               </div>
             }
             action={
@@ -70,6 +108,7 @@ export function ProfileSettings() {
                   variant="ghost"
                   size="sm"
                   className="h-8 text-primary hover:text-primary/80"
+                  disabled
                 >
                   Change
                 </Button>
@@ -79,26 +118,78 @@ export function ProfileSettings() {
 
           <SettingsRow
             label="Display Name"
-            value="kcalvin"
+            value={
+              user?.user_metadata?.full_name ||
+              user?.user_metadata?.name ||
+              "Not set"
+            }
             action={
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-8 text-primary hover:text-primary/80"
-              >
-                Change
-              </Button>
+              <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 text-primary hover:text-primary/80"
+                    onClick={() => {
+                      setDisplayName(
+                        user?.user_metadata?.full_name ||
+                          user?.user_metadata?.name ||
+                          ""
+                      );
+                      setIsDialogOpen(true);
+                    }}
+                  >
+                    Change
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Edit Display Name</DialogTitle>
+                    <DialogDescription>
+                      This is the name that will be displayed on your profile
+                      and interactions.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <form action={handleUpdateName} className="space-y-4">
+                    <div className="space-y-2">
+                      <Input
+                        name="displayName"
+                        value={displayName}
+                        onChange={(e) => setDisplayName(e.target.value)}
+                        placeholder="Display Name"
+                      />
+                    </div>
+                    <DialogFooter>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => setIsDialogOpen(false)}
+                        disabled={isPending}
+                      >
+                        Cancel
+                      </Button>
+                      <Button type="submit" disabled={isPending}>
+                        {isPending ? (
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        ) : null}
+                        Save Changes
+                      </Button>
+                    </DialogFooter>
+                  </form>
+                </DialogContent>
+              </Dialog>
             }
           />
 
           <SettingsRow
             label="Username"
-            value="Not set"
+            value={user?.user_metadata?.username || "Not set"}
             action={
               <Button
                 variant="ghost"
                 size="sm"
                 className="h-8 text-primary hover:text-primary/80"
+                disabled
               >
                 Set Username
               </Button>
@@ -114,6 +205,7 @@ export function ProfileSettings() {
                 variant="ghost"
                 size="sm"
                 className="h-8 text-primary hover:text-primary/80"
+                disabled
               >
                 Add Bio
               </Button>

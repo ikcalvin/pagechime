@@ -134,9 +134,27 @@ export function HeaderContent({ user }: { user: any }) {
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="rounded-full h-8 w-8 bg-muted"
+                      className="rounded-full h-8 w-8 bg-muted overflow-hidden"
                     >
-                      <User className="h-5 w-5" />
+                      {user.user_metadata?.avatar_url ||
+                      user.user_metadata?.picture ? (
+                        <Image
+                          src={
+                            user.user_metadata.avatar_url ||
+                            user.user_metadata.picture
+                          }
+                          alt={
+                            user.user_metadata?.full_name ||
+                            user.user_metadata?.name ||
+                            user.email
+                          }
+                          width={32}
+                          height={32}
+                          className="h-full w-full object-cover"
+                        />
+                      ) : (
+                        <User className="h-5 w-5" />
+                      )}
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="w-56">
