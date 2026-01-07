@@ -30,7 +30,9 @@ function SubmitButton() {
 
 import { useSearchParams } from "next/navigation";
 
-export default function ResetPasswordPage() {
+import { Suspense } from "react";
+
+function ResetPasswordForm() {
   const searchParams = useSearchParams();
   const token = searchParams.get("token");
   const [state, formAction] = useActionState(updatePassword, { error: null });
@@ -44,6 +46,7 @@ export default function ResetPasswordPage() {
       return () => clearTimeout(timer);
     }
   }, [state?.success, router]);
+
   return (
     <div className="flex h-screen w-full flex-col items-center justify-center p-4">
       <div className="mb-8 flex flex-col items-center gap-2">
@@ -127,5 +130,19 @@ export default function ResetPasswordPage() {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+export default function ResetPasswordPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex h-screen items-center justify-center">
+          Loading...
+        </div>
+      }
+    >
+      <ResetPasswordForm />
+    </Suspense>
   );
 }
