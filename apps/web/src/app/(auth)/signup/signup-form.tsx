@@ -17,6 +17,7 @@ import {
 import Link from "next/link";
 import Image from "next/image";
 import { AuthErrorMessage } from "../login/auth-error-message";
+import { OAuthSignin } from "../oauth-signin";
 
 function SubmitButton() {
   const { pending } = useFormStatus();
@@ -119,6 +120,7 @@ export function SignupForm() {
             </div>
             <SubmitButton />
           </form>
+          <OAuthSignin />
         </CardContent>
         <CardFooter className="flex flex-col gap-2 border-t pt-4">
           <p className="text-xs text-center text-muted-foreground">

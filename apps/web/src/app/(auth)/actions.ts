@@ -159,3 +159,39 @@ export async function updatePassword(prevState: State | null, formData: FormData
     revalidatePath('/', 'layout')
     return { error: null, success: true, message: 'Password updated successfully' }
 }
+
+export async function loginWithGoogle() {
+    const supabase = await createClient()
+    const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+            redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/auth/callback`,
+        },
+    })
+
+    if (error) {
+        redirect('/login?error=Could not authenticate with Google')
+    }
+
+    if (data.url) {
+        redirect(data.url)
+    }
+}
+
+export async function loginWithApple() {
+    const supabase = await createClient()
+    const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'apple',
+        options: {
+            redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/auth/callback`,
+        },
+    })
+
+    if (error) {
+        redirect('/login?error=Could not authenticate with Apple')
+    }
+
+    if (data.url) {
+        redirect(data.url)
+    }
+}
