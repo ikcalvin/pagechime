@@ -3,7 +3,8 @@
 import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { User, Loader2 } from "lucide-react";
+import { User as UserIcon, Loader2 } from "lucide-react";
+import type { User } from "@supabase/supabase-js";
 import { cn } from "@/lib/utils";
 import Image from "next/image";
 import { updateProfile } from "@/app/(app)/settings/actions";
@@ -51,7 +52,7 @@ function SettingsRow({
   );
 }
 
-export function ProfileSettings({ user }: { user?: any }) {
+export function ProfileSettings({ user }: { user: User }) {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [displayName, setDisplayName] = useState(
     user?.user_metadata?.full_name || user?.user_metadata?.name || ""
@@ -98,7 +99,7 @@ export function ProfileSettings({ user }: { user?: any }) {
                     className="object-cover"
                   />
                 ) : (
-                  <User className="h-5 w-5 text-muted-foreground" />
+                  <UserIcon className="h-5 w-5 text-muted-foreground" />
                 )}
               </div>
             }

@@ -76,7 +76,6 @@ export async function updatePassword(prevState: ActionState, formData: FormData)
     }
 
     revalidatePath('/settings')
-    revalidatePath('/settings')
     return { success: 'Password updated successfully' }
 }
 
