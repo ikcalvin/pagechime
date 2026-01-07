@@ -49,6 +49,7 @@ export async function login(formData: FormData) {
 type State = {
     error: string | null;
     message?: string | null;
+    success?: boolean;
 }
 
 export async function signup(prevState: State | null, formData: FormData): Promise<State> {
@@ -102,16 +103,14 @@ export async function forgotPassword(prevState: State | null, formData: FormData
     const supabase = await createClient()
 
     const email = formData.get('email') as string
-    // Get the base URL from the request headers or env var, defaulting to localhost
-    // In server actions, we need to construct the URL carefully.
-    // However, supabase.auth.resetPasswordForEmail takes a redirectTo options.
-    // We can rely on the site URL configured in Supabase or pass a relative path if supported/configured correctly.
-    // But best to provide a full URL if possible or let Supabase handle the base.
-    // We'll use a relative path assuming Supabase is configured with the correct site URL.
 
-    // Correction: We need to pass the FULL URL for redirectTo usually.
-    // Let's assume the callback route handles the redirection.
-    // The callback route is at /auth/callback.
+    if (!email) {
+        return { error: 'Email is required' }
+    }
+
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        return { error: 'Please enter a valid email address' }
+    }
 
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
         redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/auth/callback?next=/reset-password`,
@@ -123,7 +122,6 @@ export async function forgotPassword(prevState: State | null, formData: FormData
 
     return { error: null, message: 'Check your email for the password reset link' }
 }
-
 /**
  * Updates the user's password.
  * Must be called when the user is authenticated (e.g. after clicking the reset link).
@@ -138,6 +136,20 @@ export async function updatePassword(prevState: State | null, formData: FormData
         return { error: 'Passwords do not match' }
     }
 
+    if (!password || password.length < 8) {
+        return { error: 'Password must be at least 8 characters long' }
+    }
+
+    // Check for letters, numbers, and special characters
+    const hasLetters = /[a-zA-Z]/.test(password)
+    const hasNumbers = /[0-9]/.test(password)
+    // eslint-disable-next-line no-useless-escape
+    const hasSpecialChar = /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password)
+
+    if (!hasLetters || !hasNumbers || !hasSpecialChar) {
+        return { error: 'Password must contain at least one letter, one number, and one special character' }
+    }
+
     const { error } = await supabase.auth.updateUser({ password })
 
     if (error) {
@@ -145,5 +157,5 @@ export async function updatePassword(prevState: State | null, formData: FormData
     }
 
     revalidatePath('/', 'layout')
-    redirect('/')
+    return { error: null, success: true, message: 'Password updated successfully' }
 }

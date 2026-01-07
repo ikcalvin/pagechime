@@ -2,6 +2,8 @@
 
 import { useActionState } from "react";
 import { useFormStatus } from "react-dom";
+import { useRouter } from "next/navigation";
+import { useEffect } from "react";
 import { updatePassword } from "../actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,9 +28,22 @@ function SubmitButton() {
   );
 }
 
-export default function ResetPasswordPage() {
-  const [state, formAction] = useActionState(updatePassword, { error: null });
+import { useSearchParams } from "next/navigation";
 
+export default function ResetPasswordPage() {
+  const searchParams = useSearchParams();
+  const token = searchParams.get("token");
+  const [state, formAction] = useActionState(updatePassword, { error: null });
+  const router = useRouter();
+
+  useEffect(() => {
+    if (state?.success) {
+      const timer = setTimeout(() => {
+        router.push("/login"); // Redirect to login
+      }, 2000); // 2 second delay
+      return () => clearTimeout(timer);
+    }
+  }, [state?.success, router]);
   return (
     <div className="flex h-screen w-full flex-col items-center justify-center p-4">
       <div className="mb-8 flex flex-col items-center gap-2">
@@ -63,6 +78,15 @@ export default function ResetPasswordPage() {
         </CardHeader>
         <CardContent className="grid gap-4">
           <form action={formAction} className="grid gap-4">
+            {state?.success && (
+              <div
+                className="p-3 bg-green-50 border border-green-200 rounded-md text-sm text-green-600"
+                role="alert"
+                aria-atomic="true"
+              >
+                {state.message}
+              </div>
+            )}
             {state?.error && (
               <div
                 className="p-3 bg-red-50 border border-red-200 rounded-md text-sm text-red-600"

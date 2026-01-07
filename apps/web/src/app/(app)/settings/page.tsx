@@ -8,10 +8,20 @@ import { createClient } from "@/utils/supabase/server";
 import { redirect } from "next/navigation";
 
 export default async function SettingsPage() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  let user;
+
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase.auth.getUser();
+
+    if (error || !data?.user) {
+      console.error("Error fetching user or no session:", error);
+    } else {
+      user = data.user;
+    }
+  } catch (error) {
+    console.error("Unexpected error in settings page:", error);
+  }
 
   if (!user) {
     redirect("/login");

@@ -44,8 +44,18 @@ export async function updateEmail(prevState: ActionState, formData: FormData): P
 }
 export async function updatePassword(prevState: ActionState, formData: FormData): Promise<ActionState> {
     const supabase = await createClient()
-    const password = formData.get('password') as string
-    const confirmPassword = formData.get('confirmPassword') as string
+
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) {
+        return { error: 'Unauthorized' }
+    }
+
+    const password = formData.get('password')
+    const confirmPassword = formData.get('confirmPassword')
+
+    if (typeof password !== 'string' || typeof confirmPassword !== 'string') {
+        return { error: 'Invalid password format' }
+    }
 
     if (!password) {
         return { error: 'Password is required' }

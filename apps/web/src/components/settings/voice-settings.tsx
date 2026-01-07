@@ -1,18 +1,24 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { PlayCircle } from "lucide-react";
 
 export function VoiceSettings() {
   const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
   const [selectedVoice, setSelectedVoice] = useState<string>("");
+  const hasInitializedRef = useRef(false);
+
   const [isSpeaking, setIsSpeaking] = useState(false);
-  const [isSpeechSupported] = useState(
-    typeof window !== "undefined" &&
-      "speechSynthesis" in window &&
-      "SpeechSynthesisUtterance" in window
-  );
+  const [isSpeechSupported, setIsSpeechSupported] = useState(false);
+
+  useEffect(() => {
+    setIsSpeechSupported(
+      typeof window !== "undefined" &&
+        "speechSynthesis" in window &&
+        "SpeechSynthesisUtterance" in window
+    );
+  }, []);
 
   useEffect(() => {
     if (!isSpeechSupported) return;
@@ -20,10 +26,11 @@ export function VoiceSettings() {
     const loadVoices = () => {
       const availableVoices = window.speechSynthesis.getVoices();
       setVoices(availableVoices);
-      if (availableVoices.length > 0 && !selectedVoice) {
+      if (availableVoices.length > 0 && !hasInitializedRef.current) {
         const defaultVoice =
           availableVoices.find((v) => v.default) || availableVoices[0];
         setSelectedVoice(defaultVoice.name);
+        hasInitializedRef.current = true;
       }
     };
 
@@ -96,7 +103,10 @@ export function VoiceSettings() {
                     aria-label="Select Voice"
                     className="flex h-9 w-full max-w-sm rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
                     value={selectedVoice}
-                    onChange={(e) => setSelectedVoice(e.target.value)}
+                    onChange={(e) => {
+                      setSelectedVoice(e.target.value);
+                      hasInitializedRef.current = true;
+                    }}
                   >
                     {voices.map((voice) => (
                       <option key={voice.name} value={voice.name}>
@@ -108,7 +118,9 @@ export function VoiceSettings() {
                     variant="ghost"
                     size="icon"
                     onClick={handlePreview}
-                    title="Preview Voice"
+                    aria-label={isSpeaking ? "Stop preview" : "Preview voice"}
+                    aria-pressed={isSpeaking}
+                    title={isSpeaking ? "Stop preview" : "Preview voice"}
                   >
                     <PlayCircle
                       className={
@@ -117,7 +129,7 @@ export function VoiceSettings() {
                           : "text-muted-foreground"
                       }
                     />
-                  </Button>
+                  </Button>{" "}
                 </>
               )}
             </div>
