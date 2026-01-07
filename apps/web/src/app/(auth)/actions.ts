@@ -170,7 +170,17 @@ export async function loginWithGoogle() {
     })
 
     if (error) {
-        redirect('/login?error=Could not authenticate with Google')
+        const cookieStore = await cookies()
+        cookieStore.set({
+            name: 'auth-error',
+            value: 'Could not authenticate with Google',
+            httpOnly: true,
+            path: '/',
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'lax',
+            maxAge: 60,
+        })
+        redirect('/login')
     }
 
     if (data.url) {
@@ -188,10 +198,25 @@ export async function loginWithApple() {
     })
 
     if (error) {
-        redirect('/login?error=Could not authenticate with Apple')
+        if (error) {
+            const cookieStore = await cookies()
+            cookieStore.set({
+                name: 'auth-error',
+                value: 'Could not authenticate with Apple',
+                httpOnly: true,
+                path: '/',
+                secure: process.env.NODE_ENV === 'production',
+                sameSite: 'lax',
+                maxAge: 60,
+            })
+            redirect('/login')
+        }
     }
 
     if (data.url) {
         redirect(data.url)
     }
+
+    // Fallback: if no URL provided, redirect to login with generic error
+    redirect('/login?error=Authentication flow incomplete')
 }
