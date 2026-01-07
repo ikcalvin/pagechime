@@ -8,8 +8,15 @@ export function VoiceSettings() {
   const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
   const [selectedVoice, setSelectedVoice] = useState<string>("");
   const [isSpeaking, setIsSpeaking] = useState(false);
+  const [isSpeechSupported] = useState(
+    typeof window !== "undefined" &&
+      "speechSynthesis" in window &&
+      "SpeechSynthesisUtterance" in window
+  );
 
   useEffect(() => {
+    if (!isSpeechSupported) return;
+
     const loadVoices = () => {
       const availableVoices = window.speechSynthesis.getVoices();
       setVoices(availableVoices);
@@ -24,11 +31,22 @@ export function VoiceSettings() {
     window.speechSynthesis.onvoiceschanged = loadVoices;
 
     return () => {
-      window.speechSynthesis.onvoiceschanged = null;
+      if (window.speechSynthesis) {
+        window.speechSynthesis.onvoiceschanged = null;
+      }
     };
-  }, [selectedVoice]);
+  }, [isSpeechSupported]);
+  useEffect(() => {
+    return () => {
+      if (window.speechSynthesis) {
+        window.speechSynthesis.cancel();
+      }
+    };
+  }, []);
 
   const handlePreview = () => {
+    if (!isSpeechSupported) return;
+
     if (isSpeaking) {
       window.speechSynthesis.cancel();
       setIsSpeaking(false);
@@ -44,11 +62,11 @@ export function VoiceSettings() {
     }
 
     utterance.onend = () => setIsSpeaking(false);
+    utterance.onerror = () => setIsSpeaking(false);
 
     setIsSpeaking(true);
     window.speechSynthesis.speak(utterance);
   };
-
   return (
     <div className="divide-y divide-border">
       <div className="grid md:grid-cols-[240px_1fr] gap-4 md:gap-8 py-8">
@@ -68,32 +86,40 @@ export function VoiceSettings() {
               </span>
             </div>
             <div className="flex-1 flex items-center gap-4 w-full">
-              <select
-                aria-label="Select Voice"
-                className="flex h-9 w-full max-w-sm rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
-                value={selectedVoice}
-                onChange={(e) => setSelectedVoice(e.target.value)}
-              >
-                {voices.map((voice) => (
-                  <option key={voice.name} value={voice.name}>
-                    {voice.name} ({voice.lang})
-                  </option>
-                ))}
-              </select>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={handlePreview}
-                title="Preview Voice"
-              >
-                <PlayCircle
-                  className={
-                    isSpeaking
-                      ? "text-primary animate-pulse"
-                      : "text-muted-foreground"
-                  }
-                />
-              </Button>
+              {!isSpeechSupported ? (
+                <div className="text-sm text-muted-foreground italic">
+                  Speech not supported in this browser.
+                </div>
+              ) : (
+                <>
+                  <select
+                    aria-label="Select Voice"
+                    className="flex h-9 w-full max-w-sm rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                    value={selectedVoice}
+                    onChange={(e) => setSelectedVoice(e.target.value)}
+                  >
+                    {voices.map((voice) => (
+                      <option key={voice.name} value={voice.name}>
+                        {voice.name} ({voice.lang})
+                      </option>
+                    ))}
+                  </select>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={handlePreview}
+                    title="Preview Voice"
+                  >
+                    <PlayCircle
+                      className={
+                        isSpeaking
+                          ? "text-primary animate-pulse"
+                          : "text-muted-foreground"
+                      }
+                    />
+                  </Button>
+                </>
+              )}
             </div>
           </div>
         </div>
