@@ -20,10 +20,6 @@ export default async function LoginPage() {
   const cookieStore = await cookies();
   const error = cookieStore.get("auth-error")?.value;
 
-  if (error) {
-    await deleteAuthErrorCookie();
-  }
-
   return (
     <div className="flex h-screen w-full flex-col items-center justify-center p-4">
       <div className="mb-8 flex flex-col items-center gap-2">
@@ -87,6 +83,14 @@ export default async function LoginPage() {
                 required
                 className="h-10"
               />
+            </div>
+            <div className="flex items-center justify-end">
+              <Link
+                href="/forgot-password"
+                className="text-sm font-medium text-primary underline-offset-4 hover:underline"
+              >
+                Forgot password?
+              </Link>
             </div>
             <Button formAction={login} className="w-full h-10">
               Sign In
