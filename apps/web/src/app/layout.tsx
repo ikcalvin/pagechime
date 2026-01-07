@@ -50,7 +50,7 @@ export default function RootLayout({
             <ThemeSynchronizer />
             {children}
             <MediaPlayer />
-            <Toaster />
+            <Toaster position="top-center" />
           </PlayerProvider>
         </ReaderSettingsProvider>
       </body>

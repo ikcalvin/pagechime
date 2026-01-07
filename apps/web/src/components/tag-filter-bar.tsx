@@ -46,7 +46,7 @@ export function TagFilterBar() {
 
   return (
     <div className="w-full overflow-x-auto pb-2 scrollbar-none">
-      <div className="flex gap-2 px-4">
+      <div className="flex gap-2">
         {tags.map((tag) => (
           <button
             key={tag.id}

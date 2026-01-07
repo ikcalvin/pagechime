@@ -159,7 +159,7 @@ function SortableArticle({
       } border-b border-border/40 py-6 select-none`}
     >
       <div
-        className={`group relative flex items-start gap-4 sm:gap-6 transition-all pl-6 sm:pl-8 ${
+        className={`group relative flex items-start gap-4 sm:gap-6 transition-all pl-0 md:pl-6 lg:pl-8 ${
           isDragging ? "bg-muted/30" : ""
         }`}
       >
