@@ -159,3 +159,64 @@ export async function updatePassword(prevState: State | null, formData: FormData
     revalidatePath('/', 'layout')
     return { error: null, success: true, message: 'Password updated successfully' }
 }
+
+export async function loginWithGoogle() {
+    const supabase = await createClient()
+    const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+            redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/auth/callback`,
+        },
+    })
+
+    if (error) {
+        const cookieStore = await cookies()
+        cookieStore.set({
+            name: 'auth-error',
+            value: 'Could not authenticate with Google',
+            httpOnly: true,
+            path: '/',
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'lax',
+            maxAge: 60,
+        })
+        redirect('/login')
+    }
+
+    if (data.url) {
+        redirect(data.url)
+    }
+}
+
+export async function loginWithApple() {
+    const supabase = await createClient()
+    const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'apple',
+        options: {
+            redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/auth/callback`,
+        },
+    })
+
+    if (error) {
+        if (error) {
+            const cookieStore = await cookies()
+            cookieStore.set({
+                name: 'auth-error',
+                value: 'Could not authenticate with Apple',
+                httpOnly: true,
+                path: '/',
+                secure: process.env.NODE_ENV === 'production',
+                sameSite: 'lax',
+                maxAge: 60,
+            })
+            redirect('/login')
+        }
+    }
+
+    if (data.url) {
+        redirect(data.url)
+    }
+
+    // Fallback: if no URL provided, redirect to login with generic error
+    redirect('/login?error=Authentication flow incomplete')
+}

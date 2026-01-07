@@ -14,6 +14,7 @@ import Link from "next/link";
 import Image from "next/image";
 
 import { AuthErrorMessage } from "./auth-error-message";
+import { OAuthSignin } from "../oauth-signin";
 import { cookies } from "next/headers";
 import { createClient } from "@/utils/supabase/server";
 import { redirect } from "next/navigation";
@@ -107,6 +108,7 @@ export default async function LoginPage() {
               Sign In
             </Button>
           </form>
+          <OAuthSignin />
         </CardContent>
         <CardFooter className="flex flex-col gap-2 border-t pt-4">
           <p className="text-xs text-center text-muted-foreground">
