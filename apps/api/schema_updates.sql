@@ -61,3 +61,15 @@ create extension if not exists "pg_trgm";
 create index if not exists idx_articles_title_gin on articles using gin (title gin_trgm_ops);
 create index if not exists idx_articles_url_gin on articles using gin (original_url gin_trgm_ops);
 create index if not exists idx_articles_clean_text_gin on articles using gin (clean_text gin_trgm_ops);
+
+-- Create audio_generations cache table
+create table if not exists audio_generations (
+    id uuid primary key default uuid_generate_v4(),
+    article_id uuid not null references articles(id) on delete cascade,
+    voice_id text not null,
+    audio_url text not null,
+    created_at timestamptz default now(),
+    unique(article_id, voice_id)
+);
+
+create index if not exists idx_audio_generations_lookup on audio_generations(article_id, voice_id);
