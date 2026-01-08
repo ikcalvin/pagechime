@@ -67,7 +67,11 @@ create table if not exists audio_generations (
     id uuid primary key default uuid_generate_v4(),
     article_id uuid not null references articles(id) on delete cascade,
     voice_id text not null,
-    audio_url text not null,
+    provider text,
+    url text not null,
+    timestamps jsonb,
+    duration_seconds double precision,
+    character_count integer,
     created_at timestamptz default now(),
     unique(article_id, voice_id)
 );

@@ -66,22 +66,20 @@ router.get("/:articleId", requireAuthLoose, async (req, res) => {
         }
 
         // 3. Get User Voice Preference
-        const { data: { user } } = await supabase.auth.getUser();
         // @ts-ignore
         const userMetadata = req.user.user_metadata || {};
         const voiceId = userMetadata.voice_id || "Sierra";
-
         // 4. Check Cache
         const checkCache = await supabase
             .from("audio_generations")
-            .select("audio_url")
+            .select("url")
             .eq("article_id", articleId)
             .eq("voice_id", voiceId)
             .single();
 
-        if (checkCache.data?.audio_url) {
-            console.log("Audio cache hit:", checkCache.data.audio_url);
-            return res.redirect(checkCache.data.audio_url);
+        if (checkCache.data?.url) {
+            console.log("Audio cache hit:", checkCache.data.url);
+            return res.redirect(checkCache.data.url);
         }
 
         console.log("Audio cache miss, generating...");
@@ -97,23 +95,39 @@ router.get("/:articleId", requireAuthLoose, async (req, res) => {
         for (const sentence of sentences) {
             if ((currentChunk + sentence).length < CHUNK_SIZE) {
                 currentChunk += sentence;
+            } else if (sentence.length >= CHUNK_SIZE) {
+                // Handle oversized sentences by splitting at word boundaries
+                if (currentChunk) chunks.push(currentChunk);
+                currentChunk = "";
+                let remaining = sentence;
+                while (remaining.length >= CHUNK_SIZE) {
+                    const splitAt = remaining.lastIndexOf(" ", CHUNK_SIZE - 1);
+                    const cutPoint = splitAt > 0 ? splitAt : CHUNK_SIZE;
+                    chunks.push(remaining.slice(0, cutPoint));
+                    remaining = remaining.slice(cutPoint).trim();
+                }
+                currentChunk = remaining;
             } else {
                 if (currentChunk) chunks.push(currentChunk);
                 currentChunk = sentence;
             }
         }
         if (currentChunk) chunks.push(currentChunk);
-
         const UNREAL_SPEECH_API_KEY = process.env.UNREAL_SPEECH_API_KEY;
         if (!UNREAL_SPEECH_API_KEY) {
             throw new Error("Missing UNREAL_SPEECH_API_KEY");
         }
 
         const audioBuffers: Buffer[] = [];
+        const timestampChunks: any[] = [];
+        let totalDuration = 0;
+        let totalCharacters = 0;
 
         for (const chunk of chunks) {
             // Check if client disconnected
             if (res.writableEnded || res.closed) break;
+
+            totalCharacters += chunk.length;
 
             const response = await fetch("https://api.v8.unrealspeech.com/speech", {
                 method: "POST",
@@ -151,7 +165,35 @@ router.get("/:articleId", requireAuthLoose, async (req, res) => {
                 }
 
                 const arrayBuffer = await audioResponse.arrayBuffer();
-                audioBuffers.push(Buffer.from(arrayBuffer));
+                const buffer = Buffer.from(arrayBuffer);
+                audioBuffers.push(buffer);
+
+                // Fetch Timestamps
+                if (data.TimestampsUri) {
+                    try {
+                        const tsResponse = await fetch(data.TimestampsUri);
+                        if (tsResponse.ok) {
+                            const tsData = await tsResponse.json();
+                            // Shift timestamps by current total duration
+                            if (Array.isArray(tsData)) {
+                                const shifted = tsData.map((t: any) => ({
+                                    ...t,
+                                    start: t.start + totalDuration,
+                                    end: t.end + totalDuration
+                                }));
+                                timestampChunks.push(...shifted);
+                            }
+                        }
+                    } catch (tsErr) {
+                        console.error("Failed to fetch/parse timestamps:", tsErr);
+                    }
+                }
+
+                // Calculate duration for this chunk: 
+                // 320kbps = 320,000 bits/s = 40,000 bytes/s
+                const durationSeconds = buffer.length / 40000;
+                totalDuration += durationSeconds;
+
             } else {
                 console.warn("Unreal Speech Response did not contain OutputUri. Response:", data);
             }
@@ -167,16 +209,29 @@ router.get("/:articleId", requireAuthLoose, async (req, res) => {
 
         const finalAudioBuffer = Buffer.concat(audioBuffers);
         const fileName = `${articleId}/${voiceId}.mp3`;
+        const jsonFileName = `${articleId}/${voiceId}.json`;
 
         const { r2, R2_BUCKET_NAME } = await import("../lib/r2");
         const { PutObjectCommand } = await import("@aws-sdk/client-s3");
 
+        // Upload Audio
         await r2.send(new PutObjectCommand({
             Bucket: R2_BUCKET_NAME,
             Key: fileName,
             Body: finalAudioBuffer,
             ContentType: "audio/mpeg",
         }));
+
+        // Upload Timestamps JSON if we have them
+        if (timestampChunks.length > 0) {
+            const jsonBuffer = Buffer.from(JSON.stringify(timestampChunks));
+            await r2.send(new PutObjectCommand({
+                Bucket: R2_BUCKET_NAME,
+                Key: jsonFileName,
+                Body: jsonBuffer,
+                ContentType: "application/json",
+            }));
+        }
 
         const publicDomain = process.env.R2_PUBLIC_DOMAIN;
         if (!publicDomain) {
@@ -186,11 +241,16 @@ router.get("/:articleId", requireAuthLoose, async (req, res) => {
         const protocol = publicDomain.startsWith("http") ? "" : "https://";
         const publicUrl = `${protocol}${publicDomain}/${fileName}`;
 
-        // 7. Save to Cache
+        // 7. Save to Cache with Rich Metadata
         const { error: insertError } = await supabase.from("audio_generations").insert({
             article_id: articleId,
             voice_id: voiceId,
-            audio_url: publicUrl,
+            provider: "unrealspeech",
+            url: publicUrl,
+            timestamps: timestampChunks.length > 0 ? timestampChunks : null,
+            duration_seconds: totalDuration,
+            character_count: totalCharacters,
+            bitrate: "320k"
         });
 
         if (insertError) {
