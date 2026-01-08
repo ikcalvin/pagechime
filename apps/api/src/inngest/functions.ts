@@ -1,10 +1,7 @@
 import { inngest } from "./client";
 import { supabase } from "../lib/supabase";
-import { openai } from "../lib/openai";
-import { r2, R2_BUCKET_NAME } from "../lib/r2";
 import { JSDOM } from "jsdom";
 import { Readability } from "@mozilla/readability";
-import { PutObjectCommand } from "@aws-sdk/client-s3";
 
 export const processArticle = inngest.createFunction(
     {
@@ -59,38 +56,14 @@ export const processArticle = inngest.createFunction(
             };
         });
 
-        // Step 2 & 3: TTS & Upload
-        const audioUrl = await step.run("generate-and-upload-audio", async () => {
-            const textToSpeak = scrapedData.text.slice(0, 4096);
 
-            const mp3 = await openai.audio.speech.create({
-                model: "tts-1",
-                voice: "alloy",
-                input: textToSpeak,
-            });
-
-            const buffer = Buffer.from(await mp3.arrayBuffer());
-
-            const key = `${userId}/${articleId}.mp3`;
-
-            await r2.send(new PutObjectCommand({
-                Bucket: R2_BUCKET_NAME,
-                Key: key,
-                Body: buffer,
-                ContentType: "audio/mpeg",
-            }));
-
-            const publicDomain = process.env.R2_PUBLIC_DOMAIN;
-            return `${publicDomain}/${key}`;
-        });
-
-        // Step 4: Finalize
+        // Step 2: Finalize
         await step.run("finalize-article", async () => {
             const { error } = await supabase
                 .from("articles")
                 .update({
-                    audio_url: audioUrl,
                     status: "completed",
+                    // audio_url is now generated on demand via API
                 })
                 .eq("id", articleId);
 

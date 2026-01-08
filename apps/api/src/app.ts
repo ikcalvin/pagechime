@@ -6,6 +6,7 @@ import { supabase } from "./lib/supabase";
 import cors from "cors";
 import dotenv from "dotenv";
 import collectionsRouter from "./routes/collections";
+import audioRouter from "./routes/audio";
 
 dotenv.config();
 
@@ -274,6 +275,7 @@ app.delete("/api/articles/:id/tags/:tagId", requireAuth, async (req, res) => {
 });
 
 // Collections API
+app.use("/api/audio", audioRouter);
 app.use("/api/collections", requireAuth, collectionsRouter);
 
 // Inngest Serve Handler

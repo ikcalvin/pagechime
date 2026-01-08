@@ -6,6 +6,7 @@ import { Play, Pause, X, SkipBack, SkipForward } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { cn } from "@/lib/utils";
+import { createClient } from "@/utils/supabase/client";
 
 export function MediaPlayer() {
   const {
@@ -25,6 +26,57 @@ export function MediaPlayer() {
   // Let's rely on the ref for events.
   const [currentTime, setCurrentTime] = React.useState(0);
   const [duration, setDuration] = React.useState(0);
+  const [audioSrc, setAudioSrc] = React.useState<string>("");
+
+  useEffect(() => {
+    const getAudioStreamUrl = async () => {
+      if (!currentArticle) return;
+
+      const supabase = createClient();
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      if (session?.access_token) {
+        const apiUrl =
+          process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000/api";
+        // Check if apiUrl already ends with /api, if so strip or handle.
+        // My assumption based on `utils/api.ts` was `http://localhost:3000/api`.
+        // Let's rely on the env var convention.
+        // Actually, in `utils/api.ts` it was `baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api'`.
+        // So NEXT_PUBLIC_API_URL is likely the base URL including /api or just the host.
+        // Let's assume it might not have /api if set to domain.
+        // Safer to use a relative path if on same domain? No, API might be separate.
+        // Let's blindly trust the env var pattern or hardcode the path structure relative to it.
+
+        // If NEXT_PUBLIC_API_URL includes /api (like in utils/api.ts default), then...
+        // Wait, looking at utils/api.ts: `baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api'`
+        // This implies NEXT_PUBLIC_API_URL *is* the full api base.
+
+        const baseUrl =
+          process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000/api";
+        // app.ts mounts at /api/audio.
+        // If baseUrl is .../api, then we append /audio/:id
+
+        // Correction: In app.ts: `app.use("/api/audio", audioRouter)`
+        // If the express app is listening on /, then the route is /api/audio.
+        // If NEXT_PUBLIC_API_URL points to `.../api`, then we shouldn't duplicate `/api`.
+        // However, `app.use("/api/audio"...)` establishes the path *within* the express app.
+        // If the express app is mounted at root, the URL is `/api/audio`.
+        // If `utils/api.ts` sets base to `.../api`, then clients using axios append `/articles`.
+        // So `GET /articles` becomes `.../api/articles`.
+        // So `app.ts` must be serving at root.
+
+        // So if `baseUrl` is `.../api`, I should append `/audio/${id}`.
+
+        setAudioSrc(
+          `${baseUrl}/audio/${currentArticle.id}?token=${session.access_token}`
+        );
+      }
+    };
+
+    getAudioStreamUrl();
+  }, [currentArticle]);
 
   useEffect(() => {
     const audio = audioRef.current;
@@ -86,7 +138,7 @@ export function MediaPlayer() {
       {/* Hidden Audio Element */}
       <audio
         ref={audioRef}
-        src={currentArticle.audio_url}
+        src={audioSrc}
         onError={(e) => {
           console.error("Audio tag error:", e.currentTarget.error);
           console.error("Source URL was:", currentArticle.audio_url);

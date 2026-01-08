@@ -273,7 +273,7 @@ function SortableArticle({
           <div className="flex items-center gap-3 mt-2">
             {/* Status / Play Controls */}
             <div className="flex items-center gap-2">
-              {article.status === "completed" && article.audio_url ? (
+              {article.status === "completed" ? (
                 <Button
                   variant="secondary"
                   size="sm"
