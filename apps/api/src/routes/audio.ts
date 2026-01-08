@@ -110,7 +110,7 @@ router.get("/:articleId", requireAuthLoose, async (req, res) => {
                     Text: chunk,
                     VoiceId: voiceId,
                     Bitrate: "192k",
-                    Speed: "0.1",
+                    Speed: "0",
                     Pitch: "1",
                 }),
             });
