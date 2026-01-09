@@ -34,12 +34,16 @@ export function MediaPlayer() {
     const supabase = createClient();
 
     // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.access_token) {
-        setSessionToken(session.access_token);
-      }
-    });
-
+    supabase.auth
+      .getSession()
+      .then(({ data: { session } }) => {
+        if (session?.access_token) {
+          setSessionToken(session.access_token);
+        }
+      })
+      .catch((error) => {
+        console.error("Failed to get session:", error);
+      });
     // Subscribe to auth changes
     const {
       data: { subscription },
@@ -58,18 +62,48 @@ export function MediaPlayer() {
 
   // Update Audio URL when article or token changes
   useEffect(() => {
-    const getAudioStreamUrl = async () => {
-      if (!currentArticle || !sessionToken) return;
+    let active = true;
+    let objectUrl: string | null = null;
 
-      const baseUrl =
-        process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000/api";
+    const fetchAudio = async () => {
+      if (!currentArticle || !sessionToken) {
+        setAudioSrc("");
+        return;
+      }
 
-      setAudioSrc(
-        `${baseUrl}/audio/${currentArticle.id}?token=${sessionToken}`
-      );
+      try {
+        const baseUrl =
+          process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000/api";
+
+        const response = await fetch(`${baseUrl}/audio/${currentArticle.id}`, {
+          headers: {
+            Authorization: `Bearer ${sessionToken}`,
+          },
+        });
+
+        if (!response.ok) {
+          throw new Error("Failed to fetch audio");
+        }
+
+        const blob = await response.blob();
+        if (!active) return;
+
+        objectUrl = URL.createObjectURL(blob);
+        setAudioSrc(objectUrl);
+      } catch (error) {
+        console.error("Error fetching audio:", error);
+        if (active) setAudioSrc("");
+      }
     };
 
-    getAudioStreamUrl();
+    fetchAudio();
+
+    return () => {
+      active = false;
+      if (objectUrl) {
+        URL.revokeObjectURL(objectUrl);
+      }
+    };
   }, [currentArticle, sessionToken]);
 
   useEffect(() => {

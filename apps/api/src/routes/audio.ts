@@ -10,9 +10,11 @@ const requireAuthLoose = async (req: express.Request, res: express.Response, nex
     let token = req.query.token as string;
 
     if (!token && req.headers.authorization) {
-        token = req.headers.authorization.split(" ")[1];
+        const parts = req.headers.authorization.split(" ");
+        if (parts.length === 2 && parts[0] === "Bearer") {
+            token = parts[1];
+        }
     }
-
     if (!token) {
         return res.status(401).json({ error: "Unauthorized: Missing token" });
     }
@@ -79,7 +81,14 @@ router.get("/:articleId", requireAuthLoose, async (req, res) => {
 
         if (checkCache.data?.url) {
             console.log("Audio cache hit:", checkCache.data.url);
-            return res.redirect(checkCache.data.url);
+            // Proxy the audio file to avoid CORS issues with R2
+            const response = await fetch(checkCache.data.url);
+            if (!response.ok) throw new Error("Failed to fetch from cache");
+
+            res.setHeader("Content-Type", "audio/mpeg");
+            // @ts-ignore
+            Readable.fromWeb(response.body).pipe(res);
+            return;
         }
 
         console.log("Audio cache miss, generating...");
@@ -299,7 +308,14 @@ router.get("/:articleId", requireAuthLoose, async (req, res) => {
             console.log("Audio generated and cached:", publicUrl);
         }
 
-        return res.redirect(publicUrl);
+        // Proxy the audio file to avoid CORS issues with R2
+        const response = await fetch(publicUrl);
+        if (!response.ok) throw new Error("Failed to fetch from R2 after upload");
+
+        res.setHeader("Content-Type", "audio/mpeg");
+        // @ts-ignore
+        Readable.fromWeb(response.body).pipe(res);
+        return;
     } catch (err: any) {
         console.error("Audio Stream Error:", err);
         if (!res.headersSent) {
