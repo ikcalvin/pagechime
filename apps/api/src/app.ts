@@ -1,12 +1,10 @@
 import express from "express";
-import { serve } from "inngest/express";
-import { inngest } from "./inngest/client";
-import { processArticle } from "./inngest/functions";
 import { supabase } from "./lib/supabase";
 import cors from "cors";
 import dotenv from "dotenv";
 import collectionsRouter from "./routes/collections";
 import audioRouter from "./routes/audio";
+import articlesRouter from "./routes/articles";
 
 dotenv.config();
 
@@ -15,9 +13,8 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Mock Auth Middleware
-// Real Auth Middleware
-const requireAuth = async (req: express.Request, res: express.Response, next: express.NextFunction) => {
+// Auth Middleware
+export const requireAuth = async (req: express.Request, res: express.Response, next: express.NextFunction) => {
     const authHeader = req.headers.authorization;
     if (!authHeader) {
         return res.status(401).json({ error: "Unauthorized: Missing Authorization header" });
@@ -47,139 +44,8 @@ const requireAuth = async (req: express.Request, res: express.Response, next: ex
 
 // Routes
 
-app.post("/api/articles", requireAuth, async (req, res) => {
-    try {
-        const { url } = req.body;
-        // @ts-ignore
-        const userId = req.user.id;
-
-        if (!url) {
-            return res.status(400).json({ error: "URL is required" });
-        }
-
-        // 1. Insert into DB
-        const { data, error } = await supabase
-            .from("articles")
-            .insert({
-                user_id: userId,
-                original_url: url,
-                status: "queued",
-                collection_id: req.body.collectionId || null,
-            })
-            .select()
-            .single();
-
-        if (error) throw error;
-
-        // 2. Trigger Inngest
-        await inngest.send({
-            name: "app/article.created",
-            data: {
-                articleId: data.id,
-                userId: userId,
-                url: url,
-            },
-        });
-
-        res.status(201).json(data);
-    } catch (err: any) {
-        console.error("Error creating article:", err);
-        res.status(500).json({ error: err.message });
-    }
-});
-
-// Update article (Archive/Delete/Reorder)
-const updateArticleHandler = async (req: express.Request, res: express.Response) => {
-    try {
-        const { id } = req.params;
-        const { is_archived, is_deleted, sort_order } = req.body;
-        // @ts-ignore
-        const userId = req.user.id;
-
-        const updates: any = {};
-        if (typeof is_archived === 'boolean') updates.is_archived = is_archived;
-        if (typeof is_deleted === 'boolean') updates.is_deleted = is_deleted;
-        if (typeof sort_order === 'number') updates.sort_order = sort_order;
-        if (req.body.collection_id !== undefined) updates.collection_id = req.body.collection_id;
-
-        const { data, error } = await supabase
-            .from("articles")
-            .update(updates)
-            .eq("id", id)
-            .eq("user_id", userId)
-            .select()
-            .maybeSingle();
-
-        if (error) throw error;
-        if (!data) return res.status(404).json({ error: "Article not found" });
-
-        res.json(data);
-    } catch (err: any) {
-        console.error("Error updating article:", err);
-        res.status(500).json({ error: err.message });
-    }
-};
-
-// Update article (Archive/Delete/Reorder)
-app.put("/api/articles/:id", requireAuth, updateArticleHandler);
-app.patch("/api/articles/:id", requireAuth, updateArticleHandler);
-
-app.get("/api/articles", requireAuth, async (req, res) => {
-    try {
-        // @ts-ignore
-        const userId = req.user.id;
-
-        let query = supabase
-            .from("articles")
-            .select("*, tags(*)")
-            .eq("user_id", userId)
-            .eq("is_deleted", false) // Default to not showing deleted
-            .order("sort_order", { ascending: false }) // Sort by user order (default newest/highest first)
-            .order("created_at", { ascending: false }); // Fallback
-
-        if (req.query.collectionId) {
-            // @ts-ignore
-            query = query.eq("collection_id", req.query.collectionId);
-        }
-
-        if (req.query.search) {
-            const searchTerm = req.query.search as string;
-            query = query.or(`title.ilike.%${searchTerm}%,original_url.ilike.%${searchTerm}%,clean_text.ilike.%${searchTerm}%`);
-        }
-
-        const { data, error } = await query;
-
-        // Transform data if necessary, though Supabase returns tags as an array of objects which is good
-        res.json(data);
-    } catch (err: any) {
-        console.error("Error fetching articles:", err);
-        res.status(500).json({ error: err.message });
-    }
-});
-
-// Get single article
-app.get("/api/articles/:id", requireAuth, async (req, res) => {
-    try {
-        const { id } = req.params;
-        // @ts-ignore
-        const userId = req.user.id;
-
-        const { data, error } = await supabase
-            .from("articles")
-            .select("*, tags(*)")
-            .eq("id", id)
-            .eq("user_id", userId)
-            .single();
-
-        if (error) throw error;
-        if (!data) return res.status(404).json({ error: "Article not found" });
-
-        res.json(data);
-    } catch (err: any) {
-        console.error("Error fetching article:", err);
-        res.status(500).json({ error: err.message });
-    }
-});
+// Articles API
+app.use("/api/articles", articlesRouter);
 
 // Tags API
 
@@ -278,17 +144,9 @@ app.delete("/api/articles/:id/tags/:tagId", requireAuth, async (req, res) => {
 app.use("/api/audio", audioRouter);
 app.use("/api/collections", requireAuth, collectionsRouter);
 
-// Inngest Serve Handler
-app.use(
-    "/api/inngest",
-    serve({
-        client: inngest,
-        functions: [processArticle],
-    })
-);
-
 app.get("/", (req, res) => {
     res.send("PageChime API is running");
 });
 
 export default app;
+
