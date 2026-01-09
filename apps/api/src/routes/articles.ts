@@ -1,6 +1,8 @@
 import express from "express";
 import { supabase } from "../lib/supabase";
 import { scrapeAndSaveArticle } from "../services/articleService";
+import { escapeSearchTerm } from "../utils/postgrest";
+
 
 const router = express.Router();
 
@@ -64,6 +66,11 @@ router.post("/", requireAuth, async (req, res) => {
             return res.status(400).json({ error: "URL is required" });
         }
 
+        try {
+            new URL(url);
+        } catch {
+            return res.status(400).json({ error: "Invalid URL format" });
+        }
         // 1. Insert into DB
         const { data, error } = await supabase
             .from("articles")
@@ -149,7 +156,8 @@ router.get("/", requireAuth, async (req, res) => {
 
         if (req.query.search) {
             const searchTerm = req.query.search as string;
-            query = query.or(`title.ilike.%${searchTerm}%,original_url.ilike.%${searchTerm}%,clean_text.ilike.%${searchTerm}%`);
+            const escapedSearchTerm = escapeSearchTerm(searchTerm);
+            query = query.or(`title.ilike.%${escapedSearchTerm}%,original_url.ilike.%${escapedSearchTerm}%,clean_text.ilike.%${escapedSearchTerm}%`);
         }
 
         const { data, error } = await query;

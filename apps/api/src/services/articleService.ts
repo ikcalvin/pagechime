@@ -76,13 +76,12 @@ export const scrapeAndSaveArticle = async (articleId: string, url: string, userI
         // Extract OG Image
         const ogImage = dom.window.document.querySelector('meta[property="og:image"]')?.getAttribute('content');
 
-        if (!article || !article.textContent) {
+        if (!article || !article.textContent || !article.content) {
             throw new Error("Failed to parse article content");
         }
 
         // Step 2: Sanitize
         const cleanHtml = DOMPurify.sanitize(article.content);
-
         // Step 3: Update Database
         const { error } = await supabase
             .from("articles")
