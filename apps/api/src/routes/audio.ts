@@ -290,7 +290,7 @@ router.get("/:articleId", requireAuthLoose, async (req, res) => {
         const publicUrl = `${protocol}${publicDomain}/${fileName}`;
 
         // 7. Save to Cache with Rich Metadata
-        const { error: insertError } = await supabase.from("audio_generations").insert({
+        const { error: insertError } = await supabase.from("audio_generations").upsert({
             article_id: articleId,
             voice_id: voiceId,
             provider: "unrealspeech",
@@ -299,7 +299,7 @@ router.get("/:articleId", requireAuthLoose, async (req, res) => {
             duration_seconds: totalDuration,
             character_count: totalCharacters,
             bitrate: "320k"
-        });
+        }, { onConflict: 'article_id,voice_id' });
 
         if (insertError) {
             console.error("Failed to cache audio generation:", insertError);
@@ -307,14 +307,10 @@ router.get("/:articleId", requireAuthLoose, async (req, res) => {
         } else {
             console.log("Audio generated and cached:", publicUrl);
         }
-
-        // Proxy the audio file to avoid CORS issues with R2
-        const response = await fetch(publicUrl);
-        if (!response.ok) throw new Error("Failed to fetch from R2 after upload");
-
+        // Serve directly from buffer - no need to re-fetch what we just uploaded
         res.setHeader("Content-Type", "audio/mpeg");
-        // @ts-ignore
-        Readable.fromWeb(response.body).pipe(res);
+        res.setHeader("Content-Length", finalAudioBuffer.length.toString());
+        res.send(finalAudioBuffer);
         return;
     } catch (err: any) {
         console.error("Audio Stream Error:", err);

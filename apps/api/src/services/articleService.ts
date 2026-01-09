@@ -9,11 +9,16 @@ const DOMPurify = createDOMPurify(window as any);
 const SCRAPE_RETRIES = 3;
 const RETRY_DELAYS = [1000, 2000, 4000]; // ms
 
-async function fetchWithRetry(url: string, retries: number): Promise<Response> {
+async function fetchWithRetry(url: string, retries: number, timeout = 30000): Promise<Response> {
     let lastError;
     for (let i = 0; i < retries; i++) {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), timeout);
+
         try {
-            const response = await fetch(url);
+            const response = await fetch(url, { signal: controller.signal });
+            clearTimeout(timeoutId);
+
             if (!response.ok) {
                 // If 4xx error, don't retry, it's likely a bad URL
                 if (response.status >= 400 && response.status < 500) {
@@ -22,8 +27,14 @@ async function fetchWithRetry(url: string, retries: number): Promise<Response> {
                 throw new Error(`Failed to fetch URL: ${response.status} ${response.statusText}`);
             }
             return response;
-        } catch (error) {
-            lastError = error;
+        } catch (error: any) {
+            clearTimeout(timeoutId);
+            if (error.name === 'AbortError' || error.name === 'TimeoutError') {
+                lastError = new Error(`Request timed out after ${timeout}ms`);
+            } else {
+                lastError = error;
+            }
+
             if (i < retries - 1) {
                 const delay = RETRY_DELAYS[i] || 4000;
                 await new Promise((resolve) => setTimeout(resolve, delay));
@@ -35,11 +46,22 @@ async function fetchWithRetry(url: string, retries: number): Promise<Response> {
 
 export const scrapeAndSaveArticle = async (articleId: string, url: string, userId: string) => {
     try {
+        // TODO: use userId for authorization/audit
         console.log(`Starting scrape for article ${articleId} from ${url}`);
 
         // Step 1: Scrape with Retry
         let response: Response;
         try {
+            try {
+                const parsedUrl = new URL(url);
+                if (parsedUrl.protocol !== "http:" && parsedUrl.protocol !== "https:") {
+                    throw new Error(`Invalid URL protocol: ${parsedUrl.protocol}`);
+                }
+            } catch (error: any) {
+                if (error.message?.startsWith("Invalid URL protocol")) throw error;
+                throw new Error(`Invalid URL format: ${url}`);
+            }
+
             response = await fetchWithRetry(url, SCRAPE_RETRIES);
         } catch (fetchError: any) {
             console.error(`Failed to fetch article ${articleId} after retries:`, fetchError);
