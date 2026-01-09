@@ -177,7 +177,7 @@ router.get("/:id", requireAuth, async (req, res) => {
 
         const { data, error } = await supabase
             .from("articles")
-            .select("*, tags(*)")
+            .select("*, tags(*), audio_generations(timestamps, voice_id)")
             .eq("id", id)
             .eq("user_id", userId)
             .single();
@@ -185,7 +185,22 @@ router.get("/:id", requireAuth, async (req, res) => {
         if (error) throw error;
         if (!data) return res.status(404).json({ error: "Article not found" });
 
-        res.json(data);
+        // Filter for preferred voice or default
+        // @ts-ignore
+        const userMetadata = req.user.user_metadata || {};
+        const preferredVoiceId = userMetadata.voice_id || "Sierra";
+
+        // Find matching generation or just return what we have (frontend can pick)
+        // Let's attach the timestamps of the preferred voice directly to the article object for easier frontend consumption
+        const generations = (data as any).audio_generations || [];
+        const matchingGen = generations.find((g: any) => g.voice_id === preferredVoiceId) || generations[0];
+
+        const articleWithAudio = {
+            ...data,
+            audio_timestamps: matchingGen?.timestamps || null
+        };
+
+        res.json(articleWithAudio);
     } catch (err: any) {
         console.error("Error fetching article:", err);
         res.status(500).json({ error: err.message });

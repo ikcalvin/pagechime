@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import {
   ChevronLeft,
@@ -39,14 +39,18 @@ export default function ArticleReaderPage() {
   const router = useRouter();
   const [article, setArticle] = useState<Article | null>(null);
   const [loading, setLoading] = useState(true);
-  const { playArticle } = usePlayer();
+  const { playArticle, audioRef, isPlaying } = usePlayer();
+  const [processedHtml, setProcessedHtml] = useState<string>("");
+  const activeWordIndexRef = useRef<number>(-1);
 
   const { settings, updateSettings } = useReaderSettings();
-  const setSettings = updateSettings; // Alias for compatibility with existing code
+  const setSettings = updateSettings;
 
   const [availableTags, setAvailableTags] = useState<any[]>([]);
 
-  // Fetch tags for TagMenu
+  // ... (keep fetchTags and existing methods same until useEffect for article)
+  // Re-implementing methods for completeness in replacement block to avoid breaking reference
+
   const fetchTags = async () => {
     try {
       const res = await api.get("/tags");
@@ -68,14 +72,7 @@ export default function ArticleReaderPage() {
   const handleArchive = async () => {
     if (!article) return;
     try {
-      // Optimistic update
-      const newStatus = !article.status; // wait, article doesn't have is_archived on type here?
-      // The local Article type in player-context doesn't have is_archived.
-      // We should update the type or just cast it.
-      // Actually player-context Article is missing is_archived.
-      // Let's assume the API returns it (it does) and just cast for now to avoid blocking.
       const isArchived = (article as any).is_archived;
-
       await api.patch(`/articles/${article.id}`, { is_archived: !isArchived });
       setArticle({ ...article, is_archived: !isArchived } as any);
       router.push("/");
@@ -111,6 +108,137 @@ export default function ArticleReaderPage() {
       fetchArticle();
     }
   }, [id]);
+
+  // Process HTML for word wrapping
+  useEffect(() => {
+    if (!article?.clean_text) return;
+
+    // Only wrap if we have timestamps, or maybe always?
+    // Always wrapping allows future highlighting if timestamps arrive later.
+    // Use DOMParser
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(article.clean_text, "text/html");
+
+    let wordIndex = 0;
+
+    // Recursive walker
+    const walk = (node: Node) => {
+      if (node.nodeType === 3) {
+        // Text node
+        const text = node.textContent || "";
+        // Split by whitespace but keep structure vaguely intact
+        // Simple split by space
+        const words = text.split(/(\s+)/);
+        const fragment = doc.createDocumentFragment();
+
+        words.forEach((part) => {
+          if (!part.trim()) {
+            fragment.appendChild(doc.createTextNode(part));
+          } else {
+            const span = doc.createElement("span");
+            span.textContent = part;
+            // Check if we have timestamps to correlate, or just index blindly
+            // We index blindly and assume sync with backend generation
+            span.id = `word-${wordIndex}`;
+            span.className =
+              "article-word transition-colors duration-200 rounded-[2px]";
+            fragment.appendChild(span);
+            wordIndex++;
+          }
+        });
+        node.parentNode?.replaceChild(fragment, node);
+      } else {
+        // Use Array.from to create a static copy of childNodes, preventing issues
+        // with live NodeLists when the DOM is modified during iteration.
+        Array.from(node.childNodes).forEach(walk);
+      }
+    };
+
+    walk(doc.body);
+    activeWordIndexRef.current = -1; // Reset highlight state so it re-applies on next tick
+    setProcessedHtml(doc.body.innerHTML);
+  }, [article?.clean_text]);
+
+  // Highlighting Logic
+  useEffect(() => {
+    // We need to handle the case where isPlaying is true, but the audio element hasn't mounted yet
+    // (because MediaPlayer mounts conditionally based on currentArticle).
+    // Changes to ref.current don't trigger effects, so we poll briefly if we expect audio to be there.
+
+    let audio = audioRef.current;
+    let pollInterval: NodeJS.Timeout;
+
+    const attachListener = () => {
+      audio = audioRef.current;
+      if (audio) {
+        console.log("Audio Element found. Attaching listener.");
+        console.log("Timestamps available:", article?.audio_timestamps?.length);
+        if (article?.audio_timestamps && article.audio_timestamps.length > 0) {
+          console.log("Sample timestamp:", article.audio_timestamps[0]);
+        }
+        audio.addEventListener("timeupdate", updateHighlight);
+      } else if (isPlaying) {
+        console.log("Audio Element not found yet, polling...");
+      }
+    };
+
+    const updateHighlight = () => {
+      if (!audio || !article?.audio_timestamps) return;
+
+      const time = audio.currentTime;
+      const index = article.audio_timestamps.findIndex(
+        (t) => t.start <= time && t.end >= time
+      );
+
+      // Debug every second or so (floored time) to avoid span spam
+      if (Math.floor(time) % 5 === 0 && Math.floor(time * 10) % 10 === 0) {
+        console.log(`Time: ${time.toFixed(2)}, Found Index: ${index}`);
+      }
+
+      if (index !== activeWordIndexRef.current) {
+        // Remove old
+        if (activeWordIndexRef.current !== -1) {
+          const oldEl = document.getElementById(
+            `word-${activeWordIndexRef.current}`
+          );
+          if (oldEl) oldEl.classList.remove("bg-green-500", "text-black");
+        }
+        // Add new
+        if (index !== -1) {
+          const newEl = document.getElementById(`word-${index}`);
+          if (newEl) {
+            console.log(
+              `Highlighting word-${index}: DOM('${newEl.textContent}') vs Audio('${article?.audio_timestamps?.[index]?.word}')`
+            );
+            newEl.classList.add("bg-green-500", "text-black");
+            // Auto-scroll to keep in view
+            newEl.scrollIntoView({ behavior: "smooth", block: "nearest" });
+          } else {
+            console.warn(`Could not find DOM element for word-${index}`);
+          }
+        }
+        activeWordIndexRef.current = index;
+      }
+    };
+
+    // Initial attempt
+    attachListener();
+
+    // If we are playing but didn't find the audio, poll for it
+    if (isPlaying && !audio) {
+      pollInterval = setInterval(() => {
+        if (audioRef.current) {
+          attachListener();
+          clearInterval(pollInterval);
+        }
+      }, 100);
+    }
+
+    return () => {
+      if (audio) audio.removeEventListener("timeupdate", updateHighlight);
+      if (pollInterval) clearInterval(pollInterval);
+    };
+  }, [article, audioRef, isPlaying]);
 
   if (loading) {
     return (
@@ -192,15 +320,15 @@ export default function ArticleReaderPage() {
 
             <div className="h-4 w-px bg-border/50 mx-1" />
 
-            {article.audio_url && (
-              <Button
-                size="sm"
-                variant="secondary"
-                onClick={() => playArticle(article)}
-              >
-                <Play className="mr-2 h-3.5 w-3.5" /> Listen
-              </Button>
-            )}
+            {/* Listen Button checks for audio capability, doesn't imply audio exists yet */}
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={() => playArticle(article)}
+            >
+              <Play className="mr-2 h-3.5 w-3.5" /> Listen
+            </Button>
+
             <Button variant="ghost" size="icon">
               <Share2 className="h-4 w-4" />
             </Button>
@@ -248,7 +376,6 @@ export default function ArticleReaderPage() {
                   <span>•</span>
                   <time>
                     {formatDistanceToNow(new Date(article.created_at), {
-                      // It might be better to show actual date for a "Reader View" feel, but relative is fine too.
                       addSuffix: true,
                     })}
                   </time>
@@ -275,8 +402,8 @@ export default function ArticleReaderPage() {
               </div>
             )}
 
-            {/* Body */}
-            {article.clean_text ? (
+            {/* Body with processed HTML */}
+            {processedHtml ? (
               <div
                 className={`leading-[1.8]
                 [&_p]:mb-8
@@ -292,6 +419,24 @@ export default function ArticleReaderPage() {
                 [&_img]:rounded-md [&_img]:my-8
                 [&_a]:underline [&_a]:underline-offset-4
               `}
+                dangerouslySetInnerHTML={{ __html: processedHtml }}
+              />
+            ) : article.clean_text ? (
+              <div
+                className={`leading-[1.8]
+                 [&_p]:mb-8
+                 [&_h2]:text-[1.5em] [&_h2]:font-bold [&_h2]:mt-[1.5em] [&_h2]:mb-[0.5em]
+                 [&_ul]:list-disc [&_ul]:pl-6 [&_ul]:mb-8
+                 [&_li]:mb-2
+                 [&_blockquote]:pl-4 [&_blockquote]:border-l-4 [&_blockquote]:italic
+                 ${
+                   settings.theme === "sepia"
+                     ? "[&_blockquote]:border-[#d3cbb0]"
+                     : "[&_blockquote]:border-primary/20"
+                 }
+                 [&_img]:rounded-md [&_img]:my-8
+                 [&_a]:underline [&_a]:underline-offset-4
+               `}
                 dangerouslySetInnerHTML={{ __html: article.clean_text }}
               />
             ) : (

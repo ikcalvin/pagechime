@@ -176,7 +176,7 @@ router.get("/:articleId", requireAuthLoose, async (req, res) => {
                             Bitrate: "320k",
                             AudioFormat: "mp3",
                             OutputFormat: "uri",
-                            TimestampType: "sentence",
+                            TimestampType: "word",
                             sync: false
                         }),
                     });

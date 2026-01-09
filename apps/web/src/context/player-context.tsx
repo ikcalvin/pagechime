@@ -21,6 +21,7 @@ export type Article = {
   tags?: { id: string; name: string }[];
   is_archived?: boolean;
   is_deleted?: boolean;
+  audio_timestamps?: { start: number; end: number; word: string }[] | null;
 };
 
 type PlayerContextType = {
