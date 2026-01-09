@@ -6,15 +6,32 @@ import { Readable } from "stream";
 const router = express.Router();
 
 // Middleware to handle auth via Query Param (for <audio> tags) or Header
+// Middleware to handle auth via Query Param (for <audio> tags) or Header
+// Note: We allow query param tokens specifically for <audio src="..."> attributes which cannot set headers.
+// Trade-off: Query params can be logged by proxies. We mitigate this by preferring Bearer headers where possible
+// and keeping query tokens short-lived/scoped when generated for this endpoint.
 const requireAuthLoose = async (req: express.Request, res: express.Response, next: express.NextFunction) => {
-    let token = req.query.token as string;
+    let token: string | undefined;
+    let authMethod: "header" | "query" = "query";
 
-    if (!token && req.headers.authorization) {
+    // 1. Prefer Authorization Header (Bearer)
+    if (req.headers.authorization) {
         const parts = req.headers.authorization.split(" ");
         if (parts.length === 2 && parts[0] === "Bearer") {
             token = parts[1];
+            authMethod = "header";
         }
     }
+
+    // 2. Fallback to Query Param (strictly for <audio> compatibility)
+    if (!token && req.query.token) {
+        token = req.query.token as string;
+        // authMethod remains 'query'
+    }
+
+    // Log the attempt (Sanitized: NO TOKEN LOGGING)
+    console.log(`[Auth] Attempting validation via ${authMethod}. Token present: ${!!token}`);
+
     if (!token) {
         return res.status(401).json({ error: "Unauthorized: Missing token" });
     }
@@ -23,6 +40,7 @@ const requireAuthLoose = async (req: express.Request, res: express.Response, nex
         const { data: { user }, error } = await supabase.auth.getUser(token);
 
         if (error || !user) {
+            console.error(`[Auth] Validation failed for ${authMethod} token.`);
             return res.status(401).json({ error: "Unauthorized: Invalid token" });
         }
 
@@ -30,6 +48,7 @@ const requireAuthLoose = async (req: express.Request, res: express.Response, nex
         req.user = user;
         next();
     } catch (err) {
+        console.error("[Auth] Internal error during validation", err);
         return res.status(500).json({ error: "Internal Auth Error" });
     }
 };
