@@ -129,39 +129,76 @@ router.get("/:articleId", requireAuthLoose, async (req, res) => {
 
             totalCharacters += chunk.length;
 
-            const response = await fetch("https://api.v8.unrealspeech.com/speech", {
-                method: "POST",
-                headers: {
-                    "Authorization": `Bearer ${UNREAL_SPEECH_API_KEY}`,
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify({
-                    Text: chunk,
-                    VoiceId: voiceId,
-                    Bitrate: "320k",
-                    AudioFormat: "mp3",
-                    OutputFormat: "uri",
-                    TimestampType: "sentence",
-                    sync: false
-                }),
-            });
+            let retryCount = 0;
+            const MAX_RETRIES = 3;
+            let response: Response | null = null;
+            let lastError: any;
+
+            while (retryCount < MAX_RETRIES) {
+                try {
+                    response = await fetch("https://api.v8.unrealspeech.com/speech", {
+                        method: "POST",
+                        headers: {
+                            "Authorization": `Bearer ${UNREAL_SPEECH_API_KEY}`,
+                            "Content-Type": "application/json",
+                        },
+                        body: JSON.stringify({
+                            Text: chunk,
+                            VoiceId: voiceId,
+                            Bitrate: "320k",
+                            AudioFormat: "mp3",
+                            OutputFormat: "uri",
+                            TimestampType: "sentence",
+                            sync: false
+                        }),
+                    });
+
+                    if (response.ok) break;
+
+                    // If 4xx client error, don't retry, it's permanent
+                    if (response.status >= 400 && response.status < 500) {
+                        throw new Error(`Unreal Speech Client Error: ${response.status}`);
+                    }
+
+                    throw new Error(`Unreal Speech Server Error: ${response.status}`);
+                } catch (err) {
+                    lastError = err;
+                    retryCount++;
+                    if (retryCount >= MAX_RETRIES) break;
+                    await new Promise(r => setTimeout(r, 500 * Math.pow(2, retryCount - 1)));
+                }
+            }
 
             console.log("Unreal Speech API Response:", voiceId);
             console.log("Unreal Speech API Chunk Length:", chunk.length);
 
-            if (!response.ok) {
-                console.error(`Unreal Speech API Error for chunk: status ${response.status}`);
-                break;
+            if (!response || !response.ok) {
+                console.error(`Unreal Speech API Failed after retries`, lastError);
+                throw new Error(`Failed to generate audio for chunk after ${MAX_RETRIES} retries. Aborting to prevent partial cache.`);
             }
 
             const data: any = await response.json();
 
             if (data.OutputUri) {
-                const audioResponse = await fetch(data.OutputUri);
+                retryCount = 0;
+                let audioResponse: Response | null = null;
 
-                if (!audioResponse.ok || !audioResponse.body) {
-                    console.error("Failed to fetch audio from OutputUri");
-                    continue;
+                while (retryCount < MAX_RETRIES) {
+                    try {
+                        audioResponse = await fetch(data.OutputUri);
+                        if (audioResponse.ok && audioResponse.body) break;
+                        throw new Error(`Download failed: ${audioResponse.status}`);
+                    } catch (err) {
+                        lastError = err;
+                        retryCount++;
+                        if (retryCount >= MAX_RETRIES) break;
+                        await new Promise(r => setTimeout(r, 500 * Math.pow(2, retryCount - 1)));
+                    }
+                }
+
+                if (!audioResponse || !audioResponse.ok || !audioResponse.body) {
+                    console.error("Failed to fetch audio from OutputUri after retries");
+                    throw new Error("Failed to download generated audio from OutputUri. Aborting.");
                 }
 
                 const arrayBuffer = await audioResponse.arrayBuffer();
@@ -195,7 +232,8 @@ router.get("/:articleId", requireAuthLoose, async (req, res) => {
                 totalDuration += durationSeconds;
 
             } else {
-                console.warn("Unreal Speech Response did not contain OutputUri. Response:", data);
+                console.error("Unreal Speech Response did not contain OutputUri. Response:", data);
+                throw new Error("Unreal Speech API returned response without OutputUri. Aborting to prevent incomplete audio.");
             }
         }
 
@@ -208,9 +246,10 @@ router.get("/:articleId", requireAuthLoose, async (req, res) => {
         }
 
         const finalAudioBuffer = Buffer.concat(audioBuffers);
-        const fileName = `${articleId}/${voiceId}.mp3`;
-        const jsonFileName = `${articleId}/${voiceId}.json`;
-
+        // Sanitize voiceId for use in file path
+        const safeVoiceId = voiceId.replace(/[^a-zA-Z0-9_-]/g, "_");
+        const fileName = `${articleId}/${safeVoiceId}.mp3`;
+        const jsonFileName = `${articleId}/${safeVoiceId}.json`;
         const { r2, R2_BUCKET_NAME } = await import("../lib/r2");
         const { PutObjectCommand } = await import("@aws-sdk/client-s3");
 
@@ -261,11 +300,10 @@ router.get("/:articleId", requireAuthLoose, async (req, res) => {
         }
 
         return res.redirect(publicUrl);
-
     } catch (err: any) {
         console.error("Audio Stream Error:", err);
         if (!res.headersSent) {
-            res.status(500).json({ error: err.message });
+            res.status(500).json({ error: "Failed to generate audio" });
         }
     }
 });
