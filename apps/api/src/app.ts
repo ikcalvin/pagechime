@@ -1,13 +1,11 @@
+import "dotenv/config";
 import express from "express";
 import { serve } from "inngest/express";
 import { inngest } from "./inngest/client";
 import { processArticle } from "./inngest/functions";
 import { supabase } from "./lib/supabase";
 import cors from "cors";
-import dotenv from "dotenv";
 import collectionsRouter from "./routes/collections";
-
-dotenv.config();
 
 const app = express();
 
