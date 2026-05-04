@@ -9,22 +9,22 @@
         "inngest:dev": "npx inngest-cli@latest dev -u http://127.0.0.1:4000/api/inngest"
     },
     "dependencies": {
-        "@aws-sdk/client-s3": "^3.400.0",
+        "@aws-sdk/client-s3": "^3.1041.0",
         "@mozilla/readability": "^0.5.0",
-        "@supabase/supabase-js": "^2.39.0",
-        "cors": "^2.8.5",
-        "dotenv": "^16.3.1",
-        "express": "^4.18.2",
-        "inngest": "^3.10.0",
-        "jsdom": "^23.0.0",
-        "openai": "^4.20.0"
+        "@supabase/supabase-js": "^2.105.3",
+        "cors": "^2.8.6",
+        "dotenv": "^16.6.1",
+        "express": "^4.22.1",
+        "inngest": "^3.54.2",
+        "jsdom": "^23.2.0",
+        "openai": "^4.104.0"
     },
     "devDependencies": {
-        "@types/cors": "^2.8.17",
-        "@types/express": "^4.17.21",
-        "@types/jsdom": "^21.1.6",
-        "@types/node": "^20.10.0",
-        "ts-node": "^10.9.1",
-        "typescript": "^5.3.2"
+        "@types/cors": "^2.8.19",
+        "@types/express": "^4.17.25",
+        "@types/jsdom": "^21.1.7",
+        "@types/node": "^20.19.39",
+        "ts-node": "^10.9.2",
+        "typescript": "^5.9.3"
     }
 }
