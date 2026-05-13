@@ -16,5 +16,6 @@ type Events = {
 
 export const inngest = new Inngest({
     id: "pagechime-api",
+    eventKey: process.env.INNGEST_EVENT_KEY,
     schemas: new EventSchemas().fromRecord<Events>(),
 });
