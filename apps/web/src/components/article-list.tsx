@@ -1,7 +1,7 @@
 "use client";
 
 import { useSearchParams } from "next/navigation";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback, useRef } from "react";
 import { formatDistanceToNow } from "date-fns";
 import {
   Play,
@@ -33,6 +33,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import api from "@/utils/api";
 import { usePlayer } from "@/context/player-context";
+import { createClient } from "@/utils/supabase/client";
 
 import { TagMenu } from "./tag-menu";
 import {
@@ -72,6 +73,7 @@ type Article = {
   tags?: Tag[];
   collection_id?: string | null;
   sort_order?: number;
+  word_count?: number;
 };
 
 type Collection = {
@@ -130,10 +132,11 @@ function SortableArticle({
   };
 
   const domain = new URL(article.original_url).hostname.replace("www.", "");
-  const readingTime = Math.max(
-    1,
-    Math.ceil((article.clean_text?.split(/\s+/).length || 0) / 200)
-  );
+
+  // Use word_count from DB if available, fall back to clean_text split
+  const wordCount =
+    article.word_count ?? (article.clean_text?.split(/\s+/).length || 0);
+  const readingTime = Math.max(1, Math.ceil(wordCount / 200));
 
   // Strip HTML for snippet
   const stripHtml = (html: string) => {
@@ -346,6 +349,7 @@ export function ArticleList({
   const [availableTags, setAvailableTags] = useState<Tag[]>([]);
   const [loading, setLoading] = useState(true);
   const { playArticle, currentArticle, isPlaying, togglePlay } = usePlayer();
+  const supabaseRef = useRef(createClient());
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -357,7 +361,7 @@ export function ArticleList({
   const searchParams = useSearchParams();
   const search = searchParams.get("search");
 
-  const fetchArticles = async () => {
+  const fetchArticles = useCallback(async () => {
     try {
       if (articles.length === 0) setLoading(true);
 
@@ -366,13 +370,19 @@ export function ArticleList({
       if (search) params.search = search;
 
       const response = await api.get("/articles", { params });
-      setArticles(response.data || []);
+
+      // Handle both paginated { data, pagination } and legacy array responses
+      const articlesData = Array.isArray(response.data)
+        ? response.data
+        : response.data?.data ?? [];
+
+      setArticles(articlesData);
     } catch (error) {
       console.error("Failed to fetch articles:", error);
     } finally {
       setLoading(false);
     }
-  };
+  }, [collectionId, search]);
 
   const fetchCollections = async () => {
     try {
@@ -396,9 +406,49 @@ export function ArticleList({
     fetchArticles();
     fetchCollections();
     fetchTags();
-    const interval = setInterval(fetchArticles, 10000); // Polling every 10s
-    return () => clearInterval(interval);
-  }, [collectionId, search]);
+
+    // Subscribe to Supabase Realtime instead of polling
+    const supabase = supabaseRef.current;
+    const channel = supabase
+      .channel("articles-changes")
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "articles" },
+        (payload) => {
+          const newArticle = payload.new as Article;
+          // Only add if it matches current filters
+          if (collectionId && newArticle.collection_id !== collectionId) return;
+          setArticles((prev) => {
+            // Avoid duplicates
+            if (prev.some((a) => a.id === newArticle.id)) return prev;
+            return [newArticle, ...prev];
+          });
+        }
+      )
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "articles" },
+        (payload) => {
+          const updated = payload.new as Article;
+          setArticles((prev) =>
+            prev.map((a) => (a.id === updated.id ? { ...a, ...updated } : a))
+          );
+        }
+      )
+      .on(
+        "postgres_changes",
+        { event: "DELETE", schema: "public", table: "articles" },
+        (payload) => {
+          const deleted = payload.old as { id: string };
+          setArticles((prev) => prev.filter((a) => a.id !== deleted.id));
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [collectionId, search, fetchArticles]);
 
   const updateArticleStatus = async (id: string, updates: Partial<Article>) => {
     setArticles((prev) =>
