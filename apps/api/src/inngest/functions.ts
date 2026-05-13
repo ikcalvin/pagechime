@@ -160,12 +160,15 @@ export const processArticle = inngest.createFunction(
       const key = `${userId}/${articleId}.mp3`;
 
       // Stream directly to R2 using multipart upload (no full buffer in memory)
+      // Convert the response body to a buffer stream for S3 compatibility
+      const audioBuffer = Buffer.from(await mp3.arrayBuffer());
+
       const upload = new Upload({
         client: r2,
         params: {
           Bucket: R2_BUCKET_NAME,
           Key: key,
-          Body: mp3.body,
+          Body: audioBuffer,
           ContentType: "audio/mpeg",
         },
       });
