@@ -67,6 +67,7 @@ type Article = {
   created_at: string;
   audio_url?: string;
   clean_text?: string;
+  excerpt?: string;
   image_url?: string;
   is_archived?: boolean;
   is_deleted?: boolean;
@@ -140,11 +141,18 @@ function SortableArticle({
 
   // Strip HTML for snippet
   const stripHtml = (html: string) => {
-    if (typeof window === "undefined") return html; // fallback for server-side (though this is client component)
+    if (typeof window === "undefined") return html;
     const tmp = document.createElement("DIV");
     tmp.innerHTML = html;
     return tmp.textContent || tmp.innerText || "";
   };
+
+  // Use excerpt from API if available, fall back to clean_text
+  const excerptText = article.excerpt
+    ? stripHtml(article.excerpt)
+    : article.clean_text
+    ? stripHtml(article.clean_text).substring(0, 200)
+    : null;
 
   const [isImageVisible, setIsImageVisible] = useState(true);
 
@@ -266,10 +274,10 @@ function SortableArticle({
             </span>
           </div>
 
-          {/* Excerpt if present (simulated for now since clean_text is full) */}
-          {article.clean_text && (
+          {/* Excerpt from server-truncated text or Realtime clean_text fallback */}
+          {excerptText && (
             <p className="text-muted-foreground text-sm line-clamp-2 leading-relaxed max-w-3xl">
-              {stripHtml(article.clean_text).substring(0, 200)}...
+              {excerptText}...
             </p>
           )}
 
@@ -365,7 +373,7 @@ export function ArticleList({
     try {
       if (articles.length === 0) setLoading(true);
 
-      const params: any = {};
+      const params: any = { view };
       if (collectionId) params.collectionId = collectionId;
       if (search) params.search = search;
 
@@ -382,7 +390,7 @@ export function ArticleList({
     } finally {
       setLoading(false);
     }
-  }, [collectionId, search]);
+  }, [collectionId, search, view]);
 
   const fetchCollections = async () => {
     try {
@@ -448,7 +456,7 @@ export function ArticleList({
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [collectionId, search, fetchArticles]);
+  }, [collectionId, search, view, fetchArticles]);
 
   const updateArticleStatus = async (id: string, updates: Partial<Article>) => {
     setArticles((prev) =>
@@ -486,10 +494,11 @@ export function ArticleList({
     );
   };
 
+  // Filtering is now done server-side via the `view` query param,
+  // but we still filter client-side for Realtime-pushed articles
+  // and soft-deleted items that haven't been removed yet.
   const filteredArticles = articles.filter((article) => {
     if (article.is_deleted) return false;
-    if (view === "inbox") return !article.is_archived;
-    if (view === "archive") return article.is_archived;
     return true;
   });
 
@@ -540,14 +549,6 @@ export function ArticleList({
         const nextOrder = nextItem.sort_order || 0;
         newSortOrder = (prevOrder + nextOrder) / 2;
       }
-
-      // Optimistic update
-      // We need to update the source 'articles' array, not just filtered.
-      // But filtered is just a view.
-      // We update the specific article's sort_order and re-sort the 'articles' state?
-      // Actually 'articles' might contain archived ones.
-      // Dragging only happens within the current view (filtered).
-      // So we update the active item's sort_order.
 
       const updatedArticle = {
         ...filteredArticles[oldIndex],

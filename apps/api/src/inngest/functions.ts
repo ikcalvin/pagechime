@@ -129,7 +129,7 @@ export const processArticle = inngest.createFunction(
 
     // Step 2: Check for existing audio (deduplication by original_url)
     const existingAudioUrl = await step.run("check-audio-dedup", async () => {
-      const { data } = await supabaseAdmin
+      const { data, error } = await supabaseAdmin
         .from("articles")
         .select("audio_url")
         .eq("original_url", url)
@@ -138,6 +138,10 @@ export const processArticle = inngest.createFunction(
         .not("audio_url", "is", null)
         .limit(1)
         .maybeSingle();
+
+      if (error) {
+        throw new Error(`Audio dedup lookup failed: ${error.message}`);
+      }
 
       return data?.audio_url ?? null;
     });

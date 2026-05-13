@@ -146,9 +146,10 @@ const updateArticleHandler = async (req: express.Request, res: express.Response)
 app.put("/api/articles/:id", requireAuth, updateArticleHandler);
 app.patch("/api/articles/:id", requireAuth, updateArticleHandler);
 
-// Columns to select for article lists (excludes clean_text for performance)
+// Columns to select for article lists (excludes full clean_text for performance).
+// Uses a Postgres substring to return a bounded excerpt for list previews.
 const ARTICLE_LIST_COLUMNS =
-  "id, user_id, original_url, title, status, audio_url, image_url, is_archived, is_deleted, collection_id, sort_order, word_count, created_at, tags(*)";
+  "id, user_id, original_url, title, status, audio_url, image_url, is_archived, is_deleted, collection_id, sort_order, word_count, created_at, clean_text.substr(0, 250) as excerpt, tags(*)";
 
 app.get("/api/articles", requireAuth, async (req, res) => {
   try {
@@ -156,21 +157,27 @@ app.get("/api/articles", requireAuth, async (req, res) => {
 
     // Pagination params with sensible defaults
     const page = Math.max(1, parseInt(req.query.page as string) || 1);
-    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit as string) || 20));
+    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit as string) || 50));
     const offset = (page - 1) * limit;
+
+    // Determine archive filter — pushed server-side so count/pagination
+    // reflect what the user actually sees in each view
+    const isArchived = req.query.view === "archive";
 
     // Build base filter (shared between count and data queries)
     let countQuery = req.supabase
       .from("articles")
       .select("id", { count: "exact", head: true })
       .eq("user_id", userId)
-      .eq("is_deleted", false);
+      .eq("is_deleted", false)
+      .eq("is_archived", isArchived);
 
     let dataQuery = req.supabase
       .from("articles")
       .select(ARTICLE_LIST_COLUMNS)
       .eq("user_id", userId)
       .eq("is_deleted", false)
+      .eq("is_archived", isArchived)
       .order("sort_order", { ascending: false })
       .order("created_at", { ascending: false })
       .range(offset, offset + limit - 1);
