@@ -6,6 +6,7 @@ import { supabaseAdmin, createUserClient } from "./lib/supabase";
 import cors from "cors";
 import dotenv from "dotenv";
 import collectionsRouter from "./routes/collections";
+import { sanitizeSearchTerm } from "./lib/sanitize";
 
 dotenv.config();
 
@@ -31,21 +32,6 @@ app.use(
 );
 
 app.use(express.json());
-
-/**
- * Strips PostgREST filter operators and other dangerous characters from
- * user-supplied search terms to prevent query injection via .ilike().
- * Also enforces a maximum length.
- */
-function sanitizeSearchTerm(raw: string): string {
-  const MAX_SEARCH_LENGTH = 200;
-  // Remove PostgREST operators and special characters that could alter query semantics
-  const sanitized = raw
-    .replace(/[%_\\]/g, "") // Remove SQL LIKE wildcards and escape char
-    .replace(/[(),.!]/g, "") // Remove PostgREST operator chars
-    .trim();
-  return sanitized.slice(0, MAX_SEARCH_LENGTH);
-}
 
 // Auth Middleware
 const requireAuth = async (
