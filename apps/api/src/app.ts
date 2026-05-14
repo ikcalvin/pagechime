@@ -146,35 +146,85 @@ const updateArticleHandler = async (req: express.Request, res: express.Response)
 app.put("/api/articles/:id", requireAuth, updateArticleHandler);
 app.patch("/api/articles/:id", requireAuth, updateArticleHandler);
 
+// Columns to select for article lists.
+// We fetch clean_text and truncate server-side to keep payloads small
+// (PostgREST .select() does not support SQL functions like substr).
+const ARTICLE_LIST_COLUMNS =
+  "id, user_id, original_url, title, status, audio_url, image_url, is_archived, is_deleted, collection_id, sort_order, word_count, created_at, clean_text, tags(*)";
+
 app.get("/api/articles", requireAuth, async (req, res) => {
   try {
     const userId = req.user!.id;
 
-    let query = req.supabase
-      .from("articles")
-      .select("*, tags(*)")
-      .eq("user_id", userId)
-      .eq("is_deleted", false) // Default to not showing deleted
-      .order("sort_order", { ascending: false }) // Sort by user order (default newest/highest first)
-      .order("created_at", { ascending: false }); // Fallback
+    // Pagination params with sensible defaults
+    const page = Math.max(1, parseInt(req.query.page as string) || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit as string) || 50));
+    const offset = (page - 1) * limit;
 
+    // Determine archive filter — pushed server-side so count/pagination
+    // reflect what the user actually sees in each view
+    const isArchived = req.query.view === "archive";
+
+    // Build base filter (shared between count and data queries)
+    let countQuery = req.supabase
+      .from("articles")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", userId)
+      .eq("is_deleted", false)
+      .eq("is_archived", isArchived);
+
+    let dataQuery = req.supabase
+      .from("articles")
+      .select(ARTICLE_LIST_COLUMNS)
+      .eq("user_id", userId)
+      .eq("is_deleted", false)
+      .eq("is_archived", isArchived)
+      .order("sort_order", { ascending: false })
+      .order("created_at", { ascending: false })
+      .range(offset, offset + limit - 1);
+
+    // Apply shared filters to both queries
     if (req.query.collectionId) {
-      query = query.eq("collection_id", req.query.collectionId as string);
+      const cid = req.query.collectionId as string;
+      countQuery = countQuery.eq("collection_id", cid);
+      dataQuery = dataQuery.eq("collection_id", cid);
     }
 
     if (req.query.search) {
       const searchTerm = sanitizeSearchTerm(req.query.search as string);
       if (searchTerm.length > 0) {
-        query = query.or(
-          `title.ilike.%${searchTerm}%,original_url.ilike.%${searchTerm}%`
-        );
+        const filter = `title.ilike.%${searchTerm}%,original_url.ilike.%${searchTerm}%`;
+        countQuery = countQuery.or(filter);
+        dataQuery = dataQuery.or(filter);
       }
     }
 
-    const { data, error } = await query;
+    // Run count and data in parallel
+    const [countResult, dataResult] = await Promise.all([countQuery, dataQuery]);
 
-    if (error) throw error;
-    res.json(data);
+    if (countResult.error) throw countResult.error;
+    if (dataResult.error) throw dataResult.error;
+
+    const total = countResult.count ?? 0;
+
+    // Truncate clean_text → excerpt server-side to keep response payload small.
+    const articles = (dataResult.data ?? []).map((a: any) => {
+      const { clean_text, ...rest } = a;
+      return {
+        ...rest,
+        excerpt: clean_text ? clean_text.slice(0, 250) : null,
+      };
+    });
+
+    res.json({
+      data: articles,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+      },
+    });
   } catch (err: any) {
     console.error("Error fetching articles:", err);
     res.status(500).json({ error: err.message });
