@@ -146,10 +146,11 @@ const updateArticleHandler = async (req: express.Request, res: express.Response)
 app.put("/api/articles/:id", requireAuth, updateArticleHandler);
 app.patch("/api/articles/:id", requireAuth, updateArticleHandler);
 
-// Columns to select for article lists (excludes full clean_text for performance).
-// Uses a Postgres substring to return a bounded excerpt for list previews.
+// Columns to select for article lists.
+// We fetch clean_text and truncate server-side to keep payloads small
+// (PostgREST .select() does not support SQL functions like substr).
 const ARTICLE_LIST_COLUMNS =
-  "id, user_id, original_url, title, status, audio_url, image_url, is_archived, is_deleted, collection_id, sort_order, word_count, created_at, clean_text.substr(0, 250) as excerpt, tags(*)";
+  "id, user_id, original_url, title, status, audio_url, image_url, is_archived, is_deleted, collection_id, sort_order, word_count, created_at, clean_text, tags(*)";
 
 app.get("/api/articles", requireAuth, async (req, res) => {
   try {
@@ -206,8 +207,17 @@ app.get("/api/articles", requireAuth, async (req, res) => {
 
     const total = countResult.count ?? 0;
 
+    // Truncate clean_text → excerpt server-side to keep response payload small.
+    const articles = (dataResult.data ?? []).map((a: any) => {
+      const { clean_text, ...rest } = a;
+      return {
+        ...rest,
+        excerpt: clean_text ? clean_text.slice(0, 250) : null,
+      };
+    });
+
     res.json({
-      data: dataResult.data,
+      data: articles,
       pagination: {
         page,
         limit,
