@@ -1,0 +1,12 @@
+name = "pagechime-email-receiver"
+main = "src/index.ts"
+compatibility_date = "2024-09-01"
+
+# Secrets must be set via the Wrangler CLI — never commit real values here.
+# Run the following commands to configure the required secrets:
+#
+#   wrangler secret put API_URL
+#   wrangler secret put WEBHOOK_SECRET
+#
+# API_URL     — Base URL of the PageChime API (e.g. https://api.pagechime.com)
+# WEBHOOK_SECRET — Shared secret used to authenticate webhook requests
