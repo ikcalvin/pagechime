@@ -6,6 +6,8 @@ import { supabaseAdmin, createUserClient } from "./lib/supabase";
 import cors from "cors";
 import dotenv from "dotenv";
 import collectionsRouter from "./routes/collections";
+import webhooksRouter from "./routes/webhooks";
+import newsletterRouter from "./routes/newsletter";
 import { sanitizeSearchTerm } from "./lib/sanitize";
 
 dotenv.config();
@@ -379,6 +381,12 @@ app.delete("/api/articles/:id/tags/:tagId", requireAuth, async (req, res) => {
 
 // Collections API
 app.use("/api/collections", requireAuth, collectionsRouter);
+
+// Newsletter API (authenticated)
+app.use("/api/newsletters", requireAuth, newsletterRouter);
+
+// Webhooks API (uses its own shared-secret auth, not requireAuth)
+app.use("/api/webhooks", webhooksRouter);
 
 // Inngest Serve Handler
 app.use(
