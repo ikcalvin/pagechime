@@ -410,6 +410,19 @@ export function ArticleList({
     }
   };
 
+  // Targeted polling fallback: re-fetch only when there are articles still
+  // in "queued" or "processing" state. Covers Realtime connection gaps and
+  // ensures the UI converges even if a Realtime event is missed.
+  useEffect(() => {
+    const hasPending = articles.some(
+      (a) => a.status === "queued" || a.status === "processing"
+    );
+    if (!hasPending) return;
+
+    const interval = setInterval(fetchArticles, 5_000);
+    return () => clearInterval(interval);
+  }, [articles, fetchArticles]);
+
   useEffect(() => {
     fetchArticles();
     fetchCollections();
