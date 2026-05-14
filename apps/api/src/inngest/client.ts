@@ -10,8 +10,17 @@ type ArticleCreated = {
     };
 };
 
+type NewsletterReceived = {
+    data: {
+        issueId: string;
+        userId: string;
+        sourceId: string;
+    };
+};
+
 type Events = {
     "app/article.created": ArticleCreated;
+    "app/newsletter.received": NewsletterReceived;
 };
 
 export const inngest = new Inngest({
