@@ -17,13 +17,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
   Play,
   Pause,
   MoreHorizontal,
@@ -898,25 +891,16 @@ export function ArticleList({
         </div>
 
         <div className="flex-shrink-0 ml-auto">
-          <Select
+          <select
             value={sort}
-            onValueChange={(val) => setSort(val as SortType)}
+            onChange={(e) => setSort(e.target.value as SortType)}
+            className="h-8 text-xs w-[110px] rounded-md bg-secondary text-foreground px-2 py-1 border-none outline-none cursor-pointer hover:bg-secondary/80 transition-colors appearance-none"
+            aria-label="Sort articles"
           >
-            <SelectTrigger className="h-8 text-xs w-[110px] border-none bg-secondary hover:bg-secondary/80 focus:ring-0 focus:ring-offset-0">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent align="end">
-              <SelectItem value="newest" className="text-xs">
-                Newest
-              </SelectItem>
-              <SelectItem value="oldest" className="text-xs">
-                Oldest
-              </SelectItem>
-              <SelectItem value="title-az" className="text-xs">
-                Title A–Z
-              </SelectItem>
-            </SelectContent>
-          </Select>
+            <option value="newest">Newest</option>
+            <option value="oldest">Oldest</option>
+            <option value="title-az">Title A–Z</option>
+          </select>
         </div>
       </div>
 
