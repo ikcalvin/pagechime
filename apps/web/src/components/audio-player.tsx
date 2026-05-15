@@ -264,11 +264,11 @@ export function AudioPlayer() {
           </div>
         </div>
 
-        {/* Mobile Player */}
-        <div className="md:hidden bg-zinc-900 text-white p-2 mx-2 mb-2 rounded-xl shadow-lg">
+        {/* Mobile Player — uses semantic colors to match light/dark theme */}
+        <div className="md:hidden bg-background/95 backdrop-blur-xl border-t text-foreground p-2 mx-2 mb-2 rounded-xl shadow-lg">
           <div className="flex items-center gap-3 pb-1">
             {/* Image */}
-            <div className="h-10 w-10 shrink-0 rounded-lg bg-white/10 overflow-hidden">
+            <div className="h-10 w-10 shrink-0 rounded-lg bg-muted overflow-hidden">
               {currentItem.imageUrl ? (
                 <img
                   src={currentItem.imageUrl}
@@ -276,8 +276,10 @@ export function AudioPlayer() {
                   className="h-full w-full object-cover"
                 />
               ) : (
-                <div className="h-full w-full flex items-center justify-center text-xs font-bold text-[#FF6B4A]">
-                  {currentItem.title.substring(0, 2).toUpperCase()}
+                <div className="h-full w-full flex items-center justify-center">
+                  <span className="text-xs font-bold text-[#FF6B4A]">
+                    {currentItem.title.substring(0, 2).toUpperCase()}
+                  </span>
                 </div>
               )}
             </div>
@@ -287,7 +289,7 @@ export function AudioPlayer() {
               <p className="text-sm font-medium truncate">
                 {currentItem.title}
               </p>
-              <p className="text-xs text-zinc-400 truncate">
+              <p className="text-xs text-muted-foreground truncate">
                 {currentItem.source}
               </p>
             </div>
@@ -296,14 +298,14 @@ export function AudioPlayer() {
             <div className="flex items-center gap-1 shrink-0">
               <button
                 onClick={cycleSpeed}
-                className="h-7 px-2 rounded-full text-[11px] font-medium bg-white/10 text-zinc-300 tabular-nums"
+                className="h-7 px-2 rounded-full text-[11px] font-medium bg-muted text-muted-foreground tabular-nums"
               >
                 {playbackSpeed}x
               </button>
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-10 w-10 text-white hover:text-white/80 hover:bg-white/10"
+                className="h-10 w-10 text-foreground hover:text-foreground/80 hover:bg-muted/50"
                 onClick={togglePlay}
               >
                 {isPlaying ? (
@@ -322,7 +324,7 @@ export function AudioPlayer() {
               max={duration || 100}
               step={1}
               onValueChange={handleSeek}
-              className="w-full [&>.relative]:h-0.5 [&_.absolute]:bg-white [&_span[role=slider]]:h-0 [&_span[role=slider]]:w-0 [&_span]:bg-white/30"
+              className="w-full [&>.relative]:h-0.5 [&_.absolute]:bg-foreground [&_span[role=slider]]:h-0 [&_span[role=slider]]:w-0 [&_span]:bg-muted-foreground/30"
             />
           </div>
         </div>

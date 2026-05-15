@@ -75,14 +75,14 @@ const fontFamilyMap: Record<string, string> = {
 const fontSizeStyle = (size: number) => ({ fontSize: `${size}px` });
 
 const themeMap: Record<string, string> = {
-  light: "bg-white text-neutral-900",
-  dark: "bg-neutral-950 text-neutral-100",
+  light: "bg-background text-foreground",
+  dark: "bg-background text-foreground",
   sepia: "bg-[#f4ecd8] text-[#3b2f1e]",
   black: "bg-black text-neutral-200",
 };
 
 const widthMap: Record<string, string> = {
-  narrow: "max-w-[600px]",
+  standard: "max-w-[720px]",
   wide: "max-w-[860px]",
 };
 
@@ -223,7 +223,9 @@ export default function ArticleReaderPage() {
     if (isThisArticlePlaying) {
       pause();
     } else {
-      play(articleToPlayable(article));
+      const playable = articleToPlayable(article);
+      if (!playable) return;
+      play(playable);
     }
   }, [article, isThisArticlePlaying, play, pause]);
 
@@ -286,16 +288,9 @@ export default function ArticleReaderPage() {
 
   const fontClass = fontFamilyMap[settings.font] ?? "font-sans";
   const themeClass = themeMap[settings.theme] ?? "bg-background text-foreground";
-  const contentWidthClass =
-    settings.width === "wide" ? widthMap.wide : widthMap.narrow;
-
-  // Default column is 720px; width setting overrides
+  // Default column is 720px; "wide" expands to 860px
   const columnClass =
-    settings.width === "narrow"
-      ? "max-w-[600px]"
-      : settings.width === "wide"
-      ? "max-w-[860px]"
-      : "max-w-[720px]";
+    settings.width === "wide" ? "max-w-[860px]" : "max-w-[720px]";
 
   // ---------------------------------------------------------------------------
   // Render
