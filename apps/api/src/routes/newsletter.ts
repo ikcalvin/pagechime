@@ -225,6 +225,142 @@ router.put("/sources/:id", async (req: Request<{ id: string }>, res: Response): 
 });
 
 // ---------------------------------------------------------------------------
+// GET /api/newsletters/briefing/:date
+// Get daily briefing for a specific date (YYYY-MM-DD) with related issues.
+// ---------------------------------------------------------------------------
+router.get("/briefing/:date", async (req: Request<{ date: string }>, res: Response): Promise<void> => {
+  const userId = req.user!.id;
+  const { date } = req.params;
+
+  try {
+    const { data: briefing, error: briefingError } = await req.supabase
+      .from("daily_briefings")
+      .select("id, briefing_date, audio_url, issue_ids, duration_seconds, newsletter_count, status, created_at")
+      .eq("user_id", userId)
+      .eq("briefing_date", date)
+      .maybeSingle();
+
+    if (briefingError) {
+      console.error("Error fetching daily briefing:", briefingError);
+      res.status(500).json({ error: "Failed to fetch briefing" });
+      return;
+    }
+
+    if (!briefing) {
+      res.json({ briefing: null, issues: [] });
+      return;
+    }
+
+    // Fetch the related newsletter issues by their IDs
+    const issueIds: string[] = briefing.issue_ids ?? [];
+    let issues: any[] = [];
+
+    if (issueIds.length > 0) {
+      const { data: issueData, error: issuesError } = await req.supabase
+        .from("newsletter_issues")
+        .select(
+          `id, subject, status, received_at, summary_text, audio_url, source_id,
+           newsletter_sources ( sender_name, sender_email )`
+        )
+        .in("id", issueIds);
+
+      if (issuesError) {
+        console.error("Error fetching briefing issues:", issuesError);
+        res.status(500).json({ error: "Failed to fetch briefing issues" });
+        return;
+      }
+
+      issues = issueData ?? [];
+    }
+
+    res.json({ briefing, issues });
+  } catch (err) {
+    console.error("Unexpected error fetching daily briefing:", err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// POST /api/newsletters/briefing/generate
+// Trigger daily briefing generation for a given date (defaults to today UTC).
+// ---------------------------------------------------------------------------
+router.post("/briefing/generate", async (req: Request, res: Response): Promise<void> => {
+  const userId = req.user!.id;
+  const date: string = req.body?.date ?? new Date().toISOString().split("T")[0];
+
+  try {
+    const { inngest } = await import("../inngest/client");
+
+    await inngest.send({
+      name: "app/briefing.generate",
+      data: { userId, date },
+    });
+
+    res.status(202).json({ message: "Briefing generation started", date });
+  } catch (err) {
+    console.error("Unexpected error triggering briefing generation:", err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// GET /api/newsletters/stats
+// Aggregated stats: total issues, sources, ready issues, listen time.
+// ---------------------------------------------------------------------------
+router.get("/stats", async (req: Request, res: Response): Promise<void> => {
+  const userId = req.user!.id;
+
+  try {
+    const [issuesResult, sourcesResult, readyResult, listenResult] = await Promise.all([
+      req.supabase
+        .from("newsletter_issues")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", userId),
+      req.supabase
+        .from("newsletter_sources")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", userId),
+      req.supabase
+        .from("newsletter_issues")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", userId)
+        .eq("status", "ready"),
+      req.supabase
+        .from("newsletter_issues")
+        .select("summary_word_count")
+        .eq("user_id", userId)
+        .eq("status", "ready"),
+    ]);
+
+    if (issuesResult.error) throw issuesResult.error;
+    if (sourcesResult.error) throw sourcesResult.error;
+    if (readyResult.error) throw readyResult.error;
+    if (listenResult.error) throw listenResult.error;
+
+    // Estimate listen time: ~150 words per minute for TTS audio
+    const totalListenMinutes = Math.round(
+      (listenResult.data ?? []).reduce(
+        (sum: number, row: { summary_word_count: number | null }) =>
+          sum + (row.summary_word_count ?? 0),
+        0
+      ) / 150
+    );
+
+    res.json({
+      stats: {
+        totalIssues: issuesResult.count ?? 0,
+        totalSources: sourcesResult.count ?? 0,
+        readyIssues: readyResult.count ?? 0,
+        totalListenMinutes,
+      },
+    });
+  } catch (err) {
+    console.error("Unexpected error fetching newsletter stats:", err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// ---------------------------------------------------------------------------
 // GET /api/newsletters/:id
 // Fetch a single newsletter issue with its summary and audio URL.
 // ---------------------------------------------------------------------------
