@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import { formatDistanceToNow } from "date-fns";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -362,6 +362,7 @@ interface SortableArticleProps {
   isActive: boolean;
   isCurrentlyPlaying: boolean;
   onPlay: (article: Article) => void;
+  onNavigate: (id: string) => void;
   onArchive: (id: string) => void;
   onUnarchive: (id: string) => void;
   onDelete: (id: string) => void;
@@ -377,6 +378,7 @@ function SortableArticle({
   isActive,
   isCurrentlyPlaying,
   onPlay,
+  onNavigate,
   onArchive,
   onUnarchive,
   onDelete,
@@ -413,8 +415,17 @@ function SortableArticle({
     <div
       ref={setNodeRef}
       style={style}
+      role="button"
+      tabIndex={0}
+      onClick={() => onNavigate(article.id)}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onNavigate(article.id);
+        }
+      }}
       className={cn(
-        "group relative flex items-center gap-3 px-4 py-3 border-b border-border/40 transition-colors",
+        "group relative flex items-center gap-3 px-4 py-3 border-b border-border/40 transition-colors cursor-pointer",
         "min-h-[80px] max-h-[88px]",
         isDragging
           ? "opacity-50 bg-muted/50 z-50"
@@ -585,6 +596,7 @@ export function ArticleList({
   view?: "inbox" | "archive";
   collectionId?: string;
 }) {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const searchQuery = searchParams.get("search") ?? "";
 
@@ -737,6 +749,13 @@ export function ArticleList({
   // ---------------------------------------------------------------------------
   // Article mutations
   // ---------------------------------------------------------------------------
+
+  const handleNavigate = useCallback(
+    (id: string) => {
+      router.push(`/article/${id}`);
+    },
+    [router]
+  );
 
   const handlePlay = useCallback(
     (article: Article) => {
@@ -939,6 +958,7 @@ export function ArticleList({
                     isActive={isActive}
                     isCurrentlyPlaying={isCurrentlyPlaying}
                     onPlay={handlePlay}
+                    onNavigate={handleNavigate}
                     onArchive={handleArchive}
                     onUnarchive={handleUnarchive}
                     onDelete={handleDelete}
