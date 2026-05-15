@@ -223,7 +223,9 @@ export default function ArticleReaderPage() {
     if (isThisArticlePlaying) {
       pause();
     } else {
-      play(articleToPlayable(article));
+      const playable = articleToPlayable(article);
+      if (!playable) return;
+      play(playable);
     }
   }, [article, isThisArticlePlaying, play, pause]);
 
