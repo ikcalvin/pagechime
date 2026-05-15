@@ -1,7 +1,6 @@
 import { Inngest } from "inngest";
 import { EventSchemas } from "inngest";
 
-// Define event types here or import them
 type ArticleCreated = {
     data: {
         articleId: string;
@@ -18,9 +17,17 @@ type NewsletterReceived = {
     };
 };
 
+type BriefingGenerate = {
+    data: {
+        userId: string;
+        date: string;
+    };
+};
+
 type Events = {
     "app/article.created": ArticleCreated;
     "app/newsletter.received": NewsletterReceived;
+    "app/briefing.generate": BriefingGenerate;
 };
 
 export const inngest = new Inngest({

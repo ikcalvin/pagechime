@@ -2,6 +2,8 @@ import express from "express";
 import { serve } from "inngest/express";
 import { inngest } from "./inngest/client";
 import { processArticle } from "./inngest/functions";
+import { processNewsletter } from "./inngest/newsletter-functions";
+import { generateDailyBriefing } from "./inngest/briefing-functions";
 import { supabaseAdmin, createUserClient } from "./lib/supabase";
 import cors from "cors";
 import dotenv from "dotenv";
@@ -393,7 +395,7 @@ app.use(
   "/api/inngest",
   serve({
     client: inngest,
-    functions: [processArticle],
+    functions: [processArticle, processNewsletter, generateDailyBriefing],
   })
 );
 
