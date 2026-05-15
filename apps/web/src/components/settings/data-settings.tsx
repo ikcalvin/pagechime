@@ -1,60 +1,66 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { Download, Upload, FileJson, Bookmark } from "lucide-react";
+import { Download, Upload, Bookmark, Database } from "lucide-react";
 
 export function DataSettings() {
   return (
-    <div className="divide-y divide-border">
-      <div className="grid md:grid-cols-[240px_1fr] gap-4 md:gap-8 py-8">
-        <div>
-          <h3 className="font-semibold text-lg">Data & Storage</h3>
-          <p className="text-sm text-muted-foreground mt-1">
-            Manage your data portability.
-          </p>
-        </div>
+    <div className="p-6">
+      <div className="mb-5">
+        <h3 className="text-base font-semibold text-foreground">
+          Data & Storage
+        </h3>
+        <p className="text-sm text-muted-foreground mt-0.5">
+          Manage your data portability.
+        </p>
+      </div>
 
-        <div className="space-y-4">
-          {/* Export Row */}
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between py-4 border-b border-border/50 gap-4">
-            <div className="space-y-1">
-              <span className="text-sm font-medium text-foreground">
-                Export Data
-              </span>
+      <div className="space-y-0 divide-y divide-border/50">
+        {/* Export */}
+        <div className="flex items-center justify-between py-3.5 gap-4">
+          <div className="flex items-center gap-3">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-muted">
+              <Database className="h-4 w-4 text-muted-foreground" />
+            </div>
+            <div>
+              <p className="text-sm font-medium text-foreground">Export Data</p>
               <p className="text-sm text-muted-foreground">
-                Download a copy of your articles and tags as JSON.
+                Download your articles and tags as JSON.
               </p>
             </div>
-            <Button variant="outline" size="sm">
-              <Download className="mr-2 h-4 w-4" />
-              Export JSON
-            </Button>
           </div>
+          <Button variant="outline" size="sm" className="shrink-0 h-8 text-xs gap-1.5">
+            <Download className="h-3.5 w-3.5" />
+            Export
+          </Button>
+        </div>
 
-          {/* Import Row */}
-          <div className="flex flex-col sm:flex-row items-start justify-between py-4 gap-4">
-            <div className="space-y-1">
-              <span className="text-sm font-medium text-foreground">
-                Import Data
-              </span>
+        {/* Import */}
+        <div className="py-3.5">
+          <div className="flex items-center gap-3 mb-3">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-muted">
+              <Upload className="h-4 w-4 text-muted-foreground" />
+            </div>
+            <div>
+              <p className="text-sm font-medium text-foreground">Import Data</p>
               <p className="text-sm text-muted-foreground">
                 Bring your library from other services.
               </p>
             </div>
-            <div className="flex flex-col gap-2 min-w-[200px]">
-              <Button variant="outline" size="sm" className="justify-start">
-                <Bookmark className="mr-2 h-4 w-4" />
-                Pocket Import
-              </Button>
-              <Button variant="outline" size="sm" className="justify-start">
-                <Bookmark className="mr-2 h-4 w-4" />
-                Instapaper Import
-              </Button>
-              <Button variant="outline" size="sm" className="justify-start">
-                <Upload className="mr-2 h-4 w-4" />
-                HTML File
-              </Button>
-            </div>
+          </div>
+          <div className="flex flex-wrap gap-2 ml-11">
+            <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5">
+              <Bookmark className="h-3.5 w-3.5" />
+              Pocket
+            </Button>
+            <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5">
+              <Bookmark className="h-3.5 w-3.5" />
+              Instapaper
+            </Button>
+            <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5">
+              <Upload className="h-3.5 w-3.5" />
+              HTML File
+            </Button>
           </div>
         </div>
       </div>
