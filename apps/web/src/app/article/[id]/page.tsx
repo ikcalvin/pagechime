@@ -82,7 +82,7 @@ const themeMap: Record<string, string> = {
 };
 
 const widthMap: Record<string, string> = {
-  narrow: "max-w-[600px]",
+  standard: "max-w-[720px]",
   wide: "max-w-[860px]",
 };
 
@@ -288,16 +288,9 @@ export default function ArticleReaderPage() {
 
   const fontClass = fontFamilyMap[settings.font] ?? "font-sans";
   const themeClass = themeMap[settings.theme] ?? "bg-background text-foreground";
-  const contentWidthClass =
-    settings.width === "wide" ? widthMap.wide : widthMap.narrow;
-
-  // Default column is 720px; width setting overrides
+  // Default column is 720px; "wide" expands to 860px
   const columnClass =
-    settings.width === "narrow"
-      ? "max-w-[600px]"
-      : settings.width === "wide"
-      ? "max-w-[860px]"
-      : "max-w-[720px]";
+    settings.width === "wide" ? "max-w-[860px]" : "max-w-[720px]";
 
   // ---------------------------------------------------------------------------
   // Render
