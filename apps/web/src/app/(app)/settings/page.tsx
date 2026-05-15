@@ -17,10 +17,8 @@ export default async function SettingsPage() {
   const user = data.user;
 
   return (
-    <div className="max-w-3xl mx-auto w-full px-4 py-8 md:px-6 md:py-12 space-y-6">
-      <h1 className="text-2xl font-bold">Settings</h1>
-
-      <div className="space-y-6">
+    <div className="max-w-3xl mx-auto w-full px-4 py-6 md:px-6 md:py-10">
+      <div className="space-y-4">
         {/* Account — Email, Password, Subscription */}
         <section className="rounded-xl border bg-card shadow-sm overflow-hidden">
           <AccountSettings userEmail={user.email ?? ""} />
