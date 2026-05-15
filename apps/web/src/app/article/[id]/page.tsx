@@ -75,8 +75,8 @@ const fontFamilyMap: Record<string, string> = {
 const fontSizeStyle = (size: number) => ({ fontSize: `${size}px` });
 
 const themeMap: Record<string, string> = {
-  light: "bg-white text-neutral-900",
-  dark: "bg-neutral-950 text-neutral-100",
+  light: "bg-background text-foreground",
+  dark: "bg-background text-foreground",
   sepia: "bg-[#f4ecd8] text-[#3b2f1e]",
   black: "bg-black text-neutral-200",
 };

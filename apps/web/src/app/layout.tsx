@@ -36,13 +36,36 @@ import { AudioPlayer } from "@/components/audio-player";
 import { ReaderSettingsProvider } from "@/context/use-reader-settings";
 import { ThemeSynchronizer } from "@/components/theme-synchronizer";
 
+// Blocking script to apply theme class before first paint, preventing FOUC.
+// Reads reader-settings from localStorage and applies .dark class + color-scheme
+// synchronously so the browser never renders the wrong theme.
+const themeScript = `
+(function() {
+  try {
+    var s = JSON.parse(localStorage.getItem('reader-settings') || '{}');
+    var t = s.theme || 'light';
+    var d = document.documentElement;
+    if (t === 'dark' || t === 'black') {
+      d.classList.add('dark');
+      d.style.colorScheme = 'dark';
+    } else {
+      d.classList.remove('dark');
+      d.style.colorScheme = 'light';
+    }
+  } catch(e) {}
+})();
+`;
+
 export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeScript }} />
+      </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased text-foreground`}
       >
