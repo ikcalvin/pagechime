@@ -30,6 +30,7 @@ export const metadata: Metadata = {
 
 import { Toaster } from "@/components/ui/sonner";
 import { PlayerProvider } from "@/context/player-context";
+import { MediaPlayer } from "@/components/media-player";
 import { AudioProvider } from "@/contexts/audio-context";
 import { AudioPlayer } from "@/components/audio-player";
 import { ReaderSettingsProvider } from "@/context/use-reader-settings";
@@ -50,6 +51,9 @@ export default function RootLayout({
             <AudioProvider>
               <ThemeSynchronizer />
               {children}
+              {/* Legacy player — handles existing article playback via usePlayer()/playArticle() */}
+              <MediaPlayer />
+              {/* New player — handles newsletter/briefing playback via useAudio()/play() */}
               <AudioPlayer />
               <Toaster position="top-center" />
             </AudioProvider>
