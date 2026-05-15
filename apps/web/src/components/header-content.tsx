@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
 import Image from "next/image";
+import { usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { AddArticleDialog } from "@/components/add-article-form";
 import { SearchBar } from "@/components/search-bar";
@@ -36,99 +36,111 @@ import { TagFilterBar } from "./tag-filter-bar";
 import { useScrollDirection } from "@/hooks/use-scroll-direction";
 import { cn } from "@/lib/utils";
 
+// ---------------------------------------------------------------------------
+// Route → page title map
+// ---------------------------------------------------------------------------
+
+function getPageTitle(pathname: string): string | null {
+  if (pathname === "/") return "Home";
+  if (pathname === "/archive") return "Archive";
+  if (pathname === "/newsletters") return "Newsletters";
+  if (pathname === "/settings") return "Settings";
+  if (pathname.startsWith("/collection/")) return "Collection";
+  return null;
+}
+
+// ---------------------------------------------------------------------------
+// Header
+// ---------------------------------------------------------------------------
+
 export function HeaderContent({ user }: { user: any }) {
   const { scrollDirection, scrollY } = useScrollDirection();
   const pathname = usePathname();
   const isSettingsPage = pathname === "/settings";
   const isHidden = scrollDirection === "down" && scrollY > 50;
 
+  const pageTitle = getPageTitle(pathname);
+
   return (
     <>
-      <header className="sticky top-0 z-50 w-full bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 transition-all duration-300">
-        {/* Main Row (Desktop: Logo, Search, User | Mobile: Logo, User) */}
-        <div className="container mx-auto flex items-center gap-4 p-4 h-16 relative z-20 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-          <div className="flex items-center shrink-0 lg:w-56">
-            <MobileNav />
-            {/* Mobile: Logo or Page Title */}
-            <div className="md:hidden absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
-              {isSettingsPage ? (
-                <span className="font-semibold text-lg">Settings</span>
-              ) : (
-                <Link href="/" className="flex items-center">
-                  <Image
-                    src="/pagechime_logo_black.svg"
-                    alt="PageChime"
-                    width={103}
-                    height={32}
-                    className="h-8 w-auto dark:hidden"
-                    priority
-                  />
-                  <Image
-                    src="/pagechime_logo_white.svg"
-                    alt="PageChime"
-                    width={103}
-                    height={32}
-                    className="h-8 w-auto hidden dark:block"
-                    priority
-                  />
-                </Link>
-              )}
-            </div>
+      <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 transition-all duration-300">
+        <div className="flex items-center gap-4 px-4 h-14">
 
-            {/* Desktop: Always Logo */}
-            <Link href="/" className="hidden md:flex items-center">
-              <Image
-                src="/pagechime_logo_black.svg"
-                alt="PageChime"
-                width={103}
-                height={32}
-                className="h-8 w-auto dark:hidden"
-                priority
-              />
-              <Image
-                src="/pagechime_logo_white.svg"
-                alt="PageChime"
-                width={103}
-                height={32}
-                className="h-8 w-auto hidden dark:block"
-                priority
-              />
-            </Link>
+          {/* Mobile: hamburger + centered title */}
+          <div className="flex items-center lg:hidden">
+            <MobileNav />
           </div>
 
-          {/* Desktop Center: Search or Page Title */}
+          {/* Mobile: centered page title or logo */}
+          <div className="lg:hidden absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
+            {pageTitle ? (
+              <span className="font-semibold text-base">{pageTitle}</span>
+            ) : (
+              <Link href="/" className="flex items-center">
+                <Image
+                  src="/pagechime_logo_black.svg"
+                  alt="PageChime"
+                  width={103}
+                  height={32}
+                  className="h-7 w-auto dark:hidden"
+                  priority
+                />
+                <Image
+                  src="/pagechime_logo_white.svg"
+                  alt="PageChime"
+                  width={103}
+                  height={32}
+                  className="h-7 w-auto hidden dark:block"
+                  priority
+                />
+              </Link>
+            )}
+          </div>
+
+          {/* Desktop left: page title */}
+          <div className="hidden lg:flex items-center min-w-0">
+            {pageTitle && (
+              <h1 className="text-lg font-semibold text-foreground truncate">
+                {pageTitle}
+              </h1>
+            )}
+          </div>
+
+          {/* Desktop center: search bar (not on settings) */}
           <div
             className={cn(
-              "hidden md:flex flex-1 px-4 items-center",
-              isSettingsPage ? "justify-start" : "justify-center mx-auto"
+              "hidden lg:flex flex-1 justify-center max-w-md mx-auto",
+              isSettingsPage && "invisible"
             )}
           >
-            {isSettingsPage ? (
-              <span className="font-semibold text-lg text-foreground/80">
-                Settings
-              </span>
-            ) : (
-              <SearchBar />
-            )}
+            <SearchBar />
           </div>
 
-          <div className="absolute right-4 md:static flex items-center gap-4 shrink-0 ml-auto md:ml-0">
+          {/* Right: actions */}
+          <div className="flex items-center gap-2 shrink-0 ml-auto">
             {user ? (
               <>
-                <div className="hidden md:block">
-                  <ThemeToggle />
-                </div>
+                {/* Add Link button — desktop only, not on settings */}
                 {!isSettingsPage && (
-                  <div className="hidden md:block">
+                  <div className="hidden lg:block">
                     <AddArticleDialog>
-                      <Button size="sm">
-                        <Plus className="mr-2 h-4 w-4" />
+                      <Button
+                        size="sm"
+                        className="h-8 gap-1.5 bg-[#FF6B4A] hover:bg-[#FF6B4A]/90 text-white"
+                      >
+                        <Plus className="h-3.5 w-3.5" />
                         <span className="hidden sm:inline">Add Link</span>
-                        <span className="sm:hidden">Add</span>
                       </Button>
                     </AddArticleDialog>
                   </div>
                 )}
+
+                {/* Theme toggle — desktop */}
+                <div className="hidden lg:block">
+                  <ThemeToggle />
+                </div>
+
+                {/* User menu */}
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button
@@ -136,7 +148,7 @@ export function HeaderContent({ user }: { user: any }) {
                       size="icon"
                       className="rounded-full h-8 w-8 bg-muted"
                     >
-                      <User className="h-5 w-5" />
+                      <User className="h-4 w-4" />
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="w-56">
@@ -180,17 +192,17 @@ export function HeaderContent({ user }: { user: any }) {
           </div>
         </div>
 
-        {/* Mobile Search & Tags Row - Collapsible */}
+        {/* Mobile Search & Tags Row — Collapsible */}
         <div
           className={cn(
-            "md:hidden overflow-hidden transition-all duration-300 ease-in-out bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/60",
+            "lg:hidden overflow-hidden transition-all duration-300 ease-in-out",
             isHidden || isSettingsPage
               ? "max-h-0 opacity-0 border-none"
-              : "max-h-40 opacity-100 border-t"
+              : "max-h-40 opacity-100 border-t border-border/40"
           )}
         >
           {!isSettingsPage && (
-            <div className="container mx-auto px-4 py-3 space-y-3">
+            <div className="px-4 py-3 space-y-3">
               <SearchBar />
               <TagFilterBar />
             </div>
@@ -200,11 +212,11 @@ export function HeaderContent({ user }: { user: any }) {
 
       {/* Mobile FAB */}
       {user && !isSettingsPage && (
-        <div className="md:hidden fixed bottom-20 right-4 z-50">
+        <div className="lg:hidden fixed bottom-20 right-4 z-50">
           <AddArticleDialog>
             <Button
               size="icon"
-              className="h-16 w-16 rounded-full shadow-lg bg-primary text-primary-foreground hover:bg-primary/90"
+              className="h-14 w-14 rounded-full shadow-lg bg-[#FF6B4A] text-white hover:bg-[#FF6B4A]/90"
             >
               <Plus className="h-6 w-6" />
               <span className="sr-only">Add Article</span>

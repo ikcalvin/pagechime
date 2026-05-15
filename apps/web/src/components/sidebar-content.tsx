@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, Archive, Folder, Plus, Tag } from "lucide-react";
+import { Home, Newspaper, Archive, Folder, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
@@ -16,6 +16,7 @@ import { ThemeToggle } from "@/components/theme-toggle";
 
 const sidebarItems = [
   { icon: Home, label: "Home", href: "/" },
+  { icon: Newspaper, label: "Newsletters", href: "/newsletters" },
   { icon: Archive, label: "Archive", href: "/archive" },
 ];
 
@@ -30,7 +31,7 @@ export function SidebarContent({ className, onNavigate }: SidebarContentProps) {
   const { tags } = useTags();
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
 
-  const handleCollectionCreated = (newCollection: Collection) => {
+  const handleCollectionCreated = (_: Collection) => {
     // Context handles state update
   };
 
@@ -40,11 +41,16 @@ export function SidebarContent({ className, onNavigate }: SidebarContentProps) {
     }
   };
 
+  const isActive = (href: string) => {
+    if (href === "/") return pathname === "/";
+    return pathname.startsWith(href);
+  };
+
   return (
     <div className={cn("flex flex-col gap-6", className)}>
       <nav className="flex flex-col gap-1">
         {sidebarItems.map((item) => {
-          const isActive = pathname === item.href;
+          const active = isActive(item.href);
           return (
             <Link
               key={item.href}
@@ -55,9 +61,9 @@ export function SidebarContent({ className, onNavigate }: SidebarContentProps) {
               <Button
                 variant="ghost"
                 className={cn(
-                  "w-full justify-start gap-3 px-2 text-base font-medium",
-                  isActive
-                    ? "text-foreground font-semibold"
+                  "w-full justify-start gap-3 px-3 text-base font-medium rounded-xl h-10",
+                  active
+                    ? "bg-[#FFF0EB] text-[#FF6B4A] dark:bg-[#FF6B4A]/10 dark:text-[#FF6B4A] font-semibold"
                     : "text-muted-foreground hover:text-foreground"
                 )}
               >
@@ -69,13 +75,13 @@ export function SidebarContent({ className, onNavigate }: SidebarContentProps) {
         })}
 
         <div className="pt-4">
-          <h3 className="mb-2 px-2 text-sm font-medium text-muted-foreground">
+          <h3 className="mb-2 px-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
             Collections
           </h3>
-          <div className="flex flex-col gap-1">
+          <div className="flex flex-col gap-0.5">
             {collections.map((collection) => {
               const href = `/collection/${collection.id}`;
-              const isActive = pathname === href;
+              const active = pathname === href;
               return (
                 <Link
                   key={collection.id}
@@ -86,9 +92,9 @@ export function SidebarContent({ className, onNavigate }: SidebarContentProps) {
                   <Button
                     variant="ghost"
                     className={cn(
-                      "w-full justify-start gap-3 px-2 text-base font-medium",
-                      isActive
-                        ? "text-foreground font-semibold"
+                      "w-full justify-start gap-3 px-3 text-base font-medium rounded-xl h-9",
+                      active
+                        ? "bg-[#FFF0EB] text-[#FF6B4A] dark:bg-[#FF6B4A]/10 dark:text-[#FF6B4A] font-semibold"
                         : "text-muted-foreground hover:text-foreground"
                     )}
                   >
@@ -107,7 +113,7 @@ export function SidebarContent({ className, onNavigate }: SidebarContentProps) {
             })}
             <Button
               variant="ghost"
-              className="w-full justify-start gap-3 px-2 text-sm text-muted-foreground hover:text-foreground"
+              className="w-full justify-start gap-3 px-3 text-sm text-muted-foreground hover:text-foreground"
               onClick={() => setCreateDialogOpen(true)}
             >
               <Plus className="h-4 w-4" />
@@ -118,24 +124,24 @@ export function SidebarContent({ className, onNavigate }: SidebarContentProps) {
 
         {tags.length > 0 && (
           <div className="pt-4">
-            <h3 className="mb-2 px-2 text-sm font-medium text-muted-foreground uppercase tracking-wider">
+            <h3 className="mb-2 px-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
               Tags
             </h3>
-            <div className="flex flex-wrap gap-2 px-2">
+            <div className="flex flex-wrap gap-1.5 px-3">
               {tags.map((tag) => (
-                <div
+                <span
                   key={tag.id}
-                  className="inline-flex items-center rounded-md border border-transparent bg-secondary px-2.5 py-0.5 text-xs font-semibold text-secondary-foreground hover:bg-secondary/80 transition-colors"
+                  className="inline-flex items-center rounded-md bg-secondary px-2 py-0.5 text-xs font-medium text-secondary-foreground"
                 >
                   #{tag.name.replace(/^#/, "")}
-                </div>
+                </span>
               ))}
             </div>
           </div>
         )}
       </nav>
 
-      <div className="mt-auto px-2 lg:hidden md:hidden">
+      <div className="mt-auto px-2">
         <ThemeToggle />
       </div>
 
