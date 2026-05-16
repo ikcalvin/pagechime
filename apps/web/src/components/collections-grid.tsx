@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import {
   Plus,
@@ -254,7 +254,7 @@ function ColorPicker({
 
 export function CollectionsGrid() {
   const router = useRouter();
-  const { createCollection, updateCollection, deleteCollection } =
+  const { addCollection, updateCollection, deleteCollection, collections: contextCollections, loading: contextLoading } =
     useCollections();
 
   // Data
@@ -279,37 +279,37 @@ export function CollectionsGrid() {
   // Fetch data
   // -------------------------------------------------------------------------
 
-  const fetchData = useCallback(async () => {
-    try {
-      setLoading(true);
-      const [collectionsRes, statsRes] = await Promise.allSettled([
-        api.get("/collections"),
-        api.get("/articles/stats"),
-      ]);
+  // Sync collections from context into local state with article_count mapping
+  useEffect(() => {
+    if (!contextLoading) {
+      setCollections(
+        contextCollections.map((c) => ({
+          id: c.id,
+          name: c.name,
+          article_count: c.articles?.[0]?.count ?? 0,
+          color: undefined,
+        }))
+      );
+      setLoading(false);
+    }
+  }, [contextCollections, contextLoading]);
 
-      if (collectionsRes.status === "fulfilled") {
-        const data = collectionsRes.value.data;
-        setCollections(Array.isArray(data) ? data : data?.data ?? []);
-      }
-
-      if (statsRes.status === "fulfilled") {
-        const data = statsRes.value.data;
+  // Fetch stats separately (may not exist yet)
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await api.get("/articles/stats");
+        const data = res.data;
         setStats({
           total_articles: data?.total_articles ?? 0,
           total_newsletters: data?.total_newsletters ?? 0,
           total_listen_minutes: data?.total_listen_minutes ?? 0,
         });
+      } catch {
+        // Endpoint may not exist yet
       }
-    } catch {
-      // Endpoints may not exist yet
-    } finally {
-      setLoading(false);
-    }
+    })();
   }, []);
-
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
 
   // -------------------------------------------------------------------------
   // Actions
@@ -334,13 +334,13 @@ export function CollectionsGrid() {
       if (!formName.trim() || isSubmitting) return;
       setIsSubmitting(true);
       try {
-        const result = await createCollection(formName.trim());
+        const result = await addCollection(formName.trim());
         if (result) {
           // Optimistically add to the grid
           setCollections((prev) => [
             ...prev,
             {
-              id: typeof result === "string" ? result : result.id ?? crypto.randomUUID(),
+              id: result.id,
               name: formName.trim(),
               article_count: 0,
               color: formColor,
@@ -354,7 +354,7 @@ export function CollectionsGrid() {
         setIsSubmitting(false);
       }
     },
-    [formName, formColor, isSubmitting, createCollection]
+    [formName, formColor, isSubmitting, addCollection]
   );
 
   const handleOpenRename = useCallback((collection: CollectionWithStats) => {
