@@ -2,7 +2,6 @@
 
 import React, { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { Sidebar } from "@/components/sidebar";
 import { ArticleList } from "@/components/article-list";
 
 import { Button } from "@/components/ui/button";
@@ -77,57 +76,70 @@ export default function CollectionPage() {
       setCollection((prev) => (prev ? { ...prev, name: newName } : null));
       toast.success("Collection renamed");
       setRenameDialogOpen(false);
-      // No navigation needed, sidebar updates via context
     }
   };
 
-  if (loading) return <div>Loading...</div>;
-  if (!collection) return <div>Collection not found</div>;
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-border border-t-[#FF6B4A]" />
+      </div>
+    );
+  }
+
+  if (!collection) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 gap-2">
+        <p className="text-lg font-semibold text-foreground">
+          Collection not found
+        </p>
+        <Button variant="outline" onClick={() => router.push("/")}>
+          Go Home
+        </Button>
+      </div>
+    );
+  }
 
   return (
-    <div className="flex min-h-screen bg-background text-foreground font-sans antialiased">
-      <Sidebar />
-      <main className="flex-1 w-0">
-        <div className="flex flex-col h-full">
-          {/* Header */}
-          <header className="sticky top-0 z-20 flex h-16 items-center border-b bg-background/95 px-6 backdrop-blur">
-            <div className="flex items-center gap-2 font-semibold text-lg">
-              <Folder className="h-5 w-5 text-muted-foreground" />
-              {collection.name}
-            </div>
-            <div className="ml-auto flex items-center gap-4">
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon">
-                    <MoreHorizontal className="h-5 w-5" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={() => setRenameDialogOpen(true)}>
-                    <Edit className="mr-2 h-4 w-4" />
-                    Rename
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onClick={handleDelete}
-                    className="text-red-600"
-                  >
-                    <Trash2 className="mr-2 h-4 w-4" />
-                    Delete Collection
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-          </header>
-
-          {/* Content */}
-          <div className="flex-1 overflow-y-auto px-6 py-6 scrollbar-hide">
-            <div className="mx-auto max-w-5xl space-y-8 pb-10">
-              <ArticleList collectionId={id} />
-            </div>
-          </div>
+    <>
+      {/* Collection header */}
+      <div className="sticky top-0 z-20 flex h-14 items-center border-b bg-background/95 px-6 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <div className="flex items-center gap-2 font-semibold text-lg">
+          <Folder className="h-5 w-5 text-muted-foreground" />
+          {collection.name}
         </div>
-      </main>
+        <div className="ml-auto flex items-center gap-2">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon">
+                <MoreHorizontal className="h-5 w-5" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => setRenameDialogOpen(true)}>
+                <Edit className="mr-2 h-4 w-4" />
+                Rename
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={handleDelete}
+                className="text-red-600"
+              >
+                <Trash2 className="mr-2 h-4 w-4" />
+                Delete Collection
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      </div>
 
+      {/* Article list */}
+      <div className="px-6 py-6">
+        <div className="mx-auto max-w-5xl">
+          <ArticleList collectionId={id} />
+        </div>
+      </div>
+
+      {/* Rename dialog */}
       <Dialog open={renameDialogOpen} onOpenChange={setRenameDialogOpen}>
         <DialogContent>
           <DialogHeader>
@@ -146,6 +158,6 @@ export default function CollectionPage() {
           </form>
         </DialogContent>
       </Dialog>
-    </div>
+    </>
   );
 }
