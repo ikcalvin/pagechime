@@ -14,7 +14,7 @@ export type BriefingData = {
   duration_seconds: number | null;
   newsletter_count: number;
   status: "pending" | "generating" | "ready" | "failed";
-  sources: { sender_name: string; logo_url?: string }[];
+  sources?: { sender_name: string; logo_url?: string }[];
 };
 
 interface BriefingCardProps {
@@ -123,7 +123,7 @@ export function BriefingCard({
         </div>
 
         {/* Source avatars */}
-        {briefing.sources.length > 0 && (
+        {briefing.sources && briefing.sources.length > 0 && (
           <div className="flex items-center gap-1 mb-5">
             {briefing.sources.slice(0, 6).map((source, i) => (
               <div
