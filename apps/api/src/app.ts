@@ -11,10 +11,22 @@ import collectionsRouter from "./routes/collections";
 import webhooksRouter from "./routes/webhooks";
 import newsletterRouter from "./routes/newsletter";
 import { sanitizeSearchTerm } from "./lib/sanitize";
+import { initSentry, Sentry } from "./lib/sentry";
+import { requireAuth } from "./middleware/auth";
+import { globalLimiter, createArticleLimiter } from "./middleware/rate-limit";
+import { validateBody } from "./middleware/validate";
+import { createArticleSchema, updateArticleSchema } from "./schemas/article";
+import { createTagSchema, addTagToArticleSchema } from "./schemas/tag";
 
 dotenv.config();
 
 const app = express();
+
+// Initialize Sentry (must be before all other middleware)
+initSentry(app);
+
+// Trust proxy for rate limiting behind reverse proxies (Railway, Render, etc.)
+app.set("trust proxy", 1);
 
 // CORS origin whitelist
 const allowedOrigins = process.env.FRONTEND_URL
@@ -37,83 +49,52 @@ app.use(
 
 app.use(express.json());
 
-// Auth Middleware
-const requireAuth = async (
-  req: express.Request,
-  res: express.Response,
-  next: express.NextFunction
-) => {
-  const authHeader = req.headers.authorization;
-  if (!authHeader) {
-    return res.status(401).json({ error: "Unauthorized: Missing Authorization header" });
-  }
-
-  const token = authHeader.split(" ")[1];
-  if (!token) {
-    return res.status(401).json({ error: "Unauthorized: Malformed Authorization header" });
-  }
-
-  try {
-    const {
-      data: { user },
-      error,
-    } = await supabaseAdmin.auth.getUser(token);
-
-    if (error || !user) {
-      console.error("Auth Error:", error);
-      return res.status(401).json({ error: "Unauthorized: Invalid token" });
-    }
-
-    req.user = user;
-    req.supabase = createUserClient(token);
-    next();
-  } catch (err) {
-    console.error("Auth Middleware Error:", err);
-    return res.status(500).json({ error: "Internal Server Error" });
-  }
-};
+// Global rate limiter
+app.use(globalLimiter);
 
 // Routes
 
-app.post("/api/articles", requireAuth, async (req, res) => {
-  try {
-    const { url } = req.body;
-    const userId = req.user!.id;
+app.post(
+  "/api/articles",
+  requireAuth,
+  createArticleLimiter,
+  validateBody(createArticleSchema),
+  async (req, res) => {
+    try {
+      const { url } = req.body;
+      const userId = req.user!.id;
 
-    if (!url) {
-      return res.status(400).json({ error: "URL is required" });
+      // 1. Insert into DB
+      const { data, error } = await req.supabase
+        .from("articles")
+        .insert({
+          user_id: userId,
+          original_url: url,
+          status: "queued",
+          collection_id: req.body.collectionId || null,
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      // 2. Trigger Inngest
+      await inngest.send({
+        name: "app/article.created",
+        data: {
+          articleId: data.id,
+          userId: userId,
+          url: url,
+        },
+      });
+
+      res.status(201).json(data);
+    } catch (err: any) {
+      console.error("Error creating article:", err);
+      res.status(500).json({ error: err.message });
     }
-
-    // 1. Insert into DB
-    const { data, error } = await req.supabase
-      .from("articles")
-      .insert({
-        user_id: userId,
-        original_url: url,
-        status: "queued",
-        collection_id: req.body.collectionId || null,
-      })
-      .select()
-      .single();
-
-    if (error) throw error;
-
-    // 2. Trigger Inngest
-    await inngest.send({
-      name: "app/article.created",
-      data: {
-        articleId: data.id,
-        userId: userId,
-        url: url,
-      },
-    });
-
-    res.status(201).json(data);
-  } catch (err: any) {
-    console.error("Error creating article:", err);
-    res.status(500).json({ error: err.message });
   }
-});
+);
 
 // Update article (Archive/Delete/Reorder)
 const updateArticleHandler = async (req: express.Request, res: express.Response) => {
@@ -147,8 +128,8 @@ const updateArticleHandler = async (req: express.Request, res: express.Response)
 };
 
 // Update article (Archive/Delete/Reorder)
-app.put("/api/articles/:id", requireAuth, updateArticleHandler);
-app.patch("/api/articles/:id", requireAuth, updateArticleHandler);
+app.put("/api/articles/:id", requireAuth, validateBody(updateArticleSchema), updateArticleHandler);
+app.patch("/api/articles/:id", requireAuth, validateBody(updateArticleSchema), updateArticleHandler);
 
 // Columns to select for article lists.
 // We fetch clean_text and truncate server-side to keep payloads small
@@ -165,8 +146,7 @@ app.get("/api/articles", requireAuth, async (req, res) => {
     const limit = Math.min(100, Math.max(1, parseInt(req.query.limit as string) || 50));
     const offset = (page - 1) * limit;
 
-    // Determine archive filter — pushed server-side so count/pagination
-    // reflect what the user actually sees in each view
+    // Determine archive filter
     const isArchived = req.query.view === "archive";
 
     // Build base filter (shared between count and data queries)
@@ -211,7 +191,7 @@ app.get("/api/articles", requireAuth, async (req, res) => {
 
     const total = countResult.count ?? 0;
 
-    // Truncate clean_text → excerpt server-side to keep response payload small.
+    // Truncate clean_text -> excerpt server-side to keep response payload small.
     const articles = (dataResult.data ?? []).map((a: any) => {
       const { clean_text, ...rest } = a;
       return {
@@ -280,12 +260,10 @@ app.get("/api/tags", requireAuth, async (req, res) => {
 });
 
 // Create tag
-app.post("/api/tags", requireAuth, async (req, res) => {
+app.post("/api/tags", requireAuth, validateBody(createTagSchema), async (req, res) => {
   try {
     const { name } = req.body;
     const userId = req.user!.id;
-
-    if (!name) return res.status(400).json({ error: "Tag name required" });
 
     const { data, error } = await req.supabase
       .from("tags")
@@ -306,49 +284,50 @@ app.post("/api/tags", requireAuth, async (req, res) => {
 });
 
 // Add tag to article
-app.post("/api/articles/:id/tags", requireAuth, async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { tagId } = req.body;
-    const userId = req.user!.id;
+app.post(
+  "/api/articles/:id/tags",
+  requireAuth,
+  validateBody(addTagToArticleSchema),
+  async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { tagId } = req.body;
+      const userId = req.user!.id;
 
-    if (!tagId) {
-      return res.status(400).json({ error: "tagId is required" });
+      // Verify the article belongs to the current user
+      const { data: article, error: articleError } = await req.supabase
+        .from("articles")
+        .select("id")
+        .eq("id", id)
+        .eq("user_id", userId)
+        .maybeSingle();
+
+      if (articleError) throw articleError;
+      if (!article) return res.status(404).json({ error: "Article not found" });
+
+      // Verify the tag belongs to the current user
+      const { data: tag, error: tagError } = await req.supabase
+        .from("tags")
+        .select("id")
+        .eq("id", tagId)
+        .eq("user_id", userId)
+        .maybeSingle();
+
+      if (tagError) throw tagError;
+      if (!tag) return res.status(404).json({ error: "Tag not found" });
+
+      const { error } = await req.supabase
+        .from("article_tags")
+        .insert({ article_id: id, tag_id: tagId });
+
+      if (error) throw error;
+      res.status(201).json({ success: true });
+    } catch (err: any) {
+      console.error("Error adding tag:", err);
+      res.status(500).json({ error: err.message });
     }
-
-    // Verify the article belongs to the current user
-    const { data: article, error: articleError } = await req.supabase
-      .from("articles")
-      .select("id")
-      .eq("id", id)
-      .eq("user_id", userId)
-      .maybeSingle();
-
-    if (articleError) throw articleError;
-    if (!article) return res.status(404).json({ error: "Article not found" });
-
-    // Verify the tag belongs to the current user
-    const { data: tag, error: tagError } = await req.supabase
-      .from("tags")
-      .select("id")
-      .eq("id", tagId)
-      .eq("user_id", userId)
-      .maybeSingle();
-
-    if (tagError) throw tagError;
-    if (!tag) return res.status(404).json({ error: "Tag not found" });
-
-    const { error } = await req.supabase
-      .from("article_tags")
-      .insert({ article_id: id, tag_id: tagId });
-
-    if (error) throw error;
-    res.status(201).json({ success: true });
-  } catch (err: any) {
-    console.error("Error adding tag:", err);
-    res.status(500).json({ error: err.message });
   }
-});
+);
 
 // Remove tag from article
 app.delete("/api/articles/:id/tags/:tagId", requireAuth, async (req, res) => {
@@ -402,5 +381,8 @@ app.use(
 app.get("/", (req, res) => {
   res.send("PageChime API is running");
 });
+
+// Sentry error handler (must be after all routes)
+Sentry.setupExpressErrorHandler(app);
 
 export default app;

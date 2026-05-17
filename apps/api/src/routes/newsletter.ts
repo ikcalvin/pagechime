@@ -1,16 +1,18 @@
 import express, { Request, Response } from "express";
 import crypto from "crypto";
+import { validateBody } from "../middleware/validate";
+import { toggleSourceSchema, generateBriefingSchema } from "../schemas/newsletter";
 
 const router = express.Router();
 
 // All routes in this file are mounted under /api/newsletters and already
 // protected by the requireAuth middleware applied in app.ts.
 
-// ---------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
 // GET /api/newsletters
 // List today's newsletter issues for the authenticated user, ordered by
 // received_at DESC with cursor-based pagination via `page` + `limit` params.
-// ---------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
 router.get("/", async (req: Request, res: Response): Promise<void> => {
   const userId = req.user!.id;
   const page = Math.max(1, parseInt((req.query.page as string) ?? "1", 10));
@@ -58,11 +60,11 @@ router.get("/", async (req: Request, res: Response): Promise<void> => {
   }
 });
 
-// ---------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
 // GET /api/newsletters/sources
 // List all newsletter sources belonging to the authenticated user.
 // Must be declared before /:id to avoid "sources" being captured as an id.
-// ---------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
 router.get("/sources", async (req: Request, res: Response): Promise<void> => {
   const userId = req.user!.id;
 
@@ -86,10 +88,10 @@ router.get("/sources", async (req: Request, res: Response): Promise<void> => {
   }
 });
 
-// ---------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
 // GET /api/newsletters/forwarding-address
 // Return the user's unique forwarding email address (derived from their hash).
-// ---------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
 router.get("/forwarding-address", async (req: Request, res: Response): Promise<void> => {
   const userId = req.user!.id;
 
@@ -122,11 +124,11 @@ router.get("/forwarding-address", async (req: Request, res: Response): Promise<v
   }
 });
 
-// ---------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
 // POST /api/newsletters/forwarding-address
 // Generate and persist a forwarding hash if the user doesn't already have one.
 // Idempotent: returns existing hash if already set.
-// ---------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
 router.post("/forwarding-address", async (req: Request, res: Response): Promise<void> => {
   const userId = req.user!.id;
   const domain = process.env.FORWARDING_EMAIL_DOMAIN ?? "mail.pagechime.app";
@@ -183,11 +185,11 @@ router.post("/forwarding-address", async (req: Request, res: Response): Promise<
   }
 });
 
-// ---------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
 // PUT /api/newsletters/sources/:id
 // Toggle a newsletter source active/inactive.
-// ---------------------------------------------------------------------------
-router.put("/sources/:id", async (req: Request<{ id: string }>, res: Response): Promise<void> => {
+// -----------------------------------------------------------------------------
+router.put("/sources/:id", validateBody(toggleSourceSchema), async (req: Request<{ id: string }>, res: Response): Promise<void> => {
   const userId = req.user!.id;
   const sourceId = req.params.id;
   const { is_active } = req.body as { is_active?: boolean };
@@ -224,10 +226,10 @@ router.put("/sources/:id", async (req: Request<{ id: string }>, res: Response): 
   }
 });
 
-// ---------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
 // GET /api/newsletters/briefing/:date
 // Get daily briefing for a specific date (YYYY-MM-DD) with related issues.
-// ---------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
 router.get("/briefing/:date", async (req: Request<{ date: string }>, res: Response): Promise<void> => {
   const userId = req.user!.id;
   const { date } = req.params;
@@ -280,11 +282,11 @@ router.get("/briefing/:date", async (req: Request<{ date: string }>, res: Respon
   }
 });
 
-// ---------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
 // POST /api/newsletters/briefing/generate
 // Trigger daily briefing generation for a given date (defaults to today UTC).
-// ---------------------------------------------------------------------------
-router.post("/briefing/generate", async (req: Request, res: Response): Promise<void> => {
+// -----------------------------------------------------------------------------
+router.post("/briefing/generate", validateBody(generateBriefingSchema), async (req: Request, res: Response): Promise<void> => {
   const userId = req.user!.id;
   const date: string = req.body?.date ?? new Date().toISOString().split("T")[0];
 
@@ -303,10 +305,10 @@ router.post("/briefing/generate", async (req: Request, res: Response): Promise<v
   }
 });
 
-// ---------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
 // GET /api/newsletters/stats
 // Aggregated stats: total issues, sources, ready issues, listen time.
-// ---------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
 router.get("/stats", async (req: Request, res: Response): Promise<void> => {
   const userId = req.user!.id;
 
@@ -360,10 +362,10 @@ router.get("/stats", async (req: Request, res: Response): Promise<void> => {
   }
 });
 
-// ---------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
 // GET /api/newsletters/:id
 // Fetch a single newsletter issue with its summary and audio URL.
-// ---------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
 router.get("/:id", async (req: Request<{ id: string }>, res: Response): Promise<void> => {
   const userId = req.user!.id;
   const issueId = req.params.id;

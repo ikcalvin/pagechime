@@ -1,6 +1,8 @@
 import express, { Request, Response, NextFunction } from "express";
 import { supabaseAdmin } from "../lib/supabase";
 import { inngest } from "../inngest/client";
+import { validateBody } from "../middleware/validate";
+import { webhookNewsletterSchema } from "../schemas/newsletter";
 
 const router = express.Router();
 
@@ -36,6 +38,7 @@ interface NewsletterWebhookBody {
 router.post(
   "/newsletter-received",
   verifyWebhookSecret,
+  validateBody(webhookNewsletterSchema),
   async (req: Request<{}, {}, NewsletterWebhookBody>, res: Response): Promise<void> => {
     const { forwardingHash, senderEmail, senderName, subject, htmlBody } = req.body;
 
