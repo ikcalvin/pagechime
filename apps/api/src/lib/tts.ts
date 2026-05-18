@@ -94,9 +94,9 @@ async function ttsChunk(text: string): Promise<Buffer> {
         method: "POST",
         headers: {
           Authorization: `Token ${apiKey}`,
-          "Content-Type": "text/plain",
+          "Content-Type": "application/json",
         },
-        body: text,
+        body: JSON.stringify({ text }),
         signal: AbortSignal.timeout(TTS_TIMEOUT_MS),
       });
 
