@@ -1,4 +1,6 @@
 import express from "express";
+import { validateBody } from "../middleware/validate";
+import { createCollectionSchema, updateCollectionSchema } from "../schemas/collection";
 
 const router = express.Router();
 
@@ -38,7 +40,7 @@ router.get("/:id", async (req, res) => {
   }
 });
 
-router.post("/", async (req, res) => {
+router.post("/", validateBody(createCollectionSchema), async (req, res) => {
   try {
     const { name } = req.body;
     const userId = req.user!.id;
@@ -56,7 +58,7 @@ router.post("/", async (req, res) => {
   }
 });
 
-router.put("/:id", async (req, res) => {
+router.put("/:id", validateBody(updateCollectionSchema), async (req, res) => {
   try {
     const { id } = req.params;
     const { name } = req.body;
