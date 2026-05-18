@@ -15,6 +15,8 @@ import { Upload } from "@aws-sdk/lib-storage";
 const DEEPGRAM_API_URL = "https://api.deepgram.com/v1/speak";
 const DEEPGRAM_MODEL = "aura-2-asteria-en"; // warm female voice, great for narration
 const MAX_CHARS_PER_REQUEST = 2000;
+const TTS_TIMEOUT_MS = 60_000; // 60s — Deepgram can be slow on cold starts or long chunks
+const TTS_MAX_RETRIES = 2; // retry transient failures (timeouts, 5xx) up to 2 times
 
 function getDeepgramApiKey(): string {
   const key = process.env.DEEPGRAM_API_KEY;
@@ -78,34 +80,69 @@ function splitTextIntoChunks(text: string, maxChars: number): string[] {
 
 // ---------------------------------------------------------------------------
 // Call Deepgram Aura for a single chunk (≤ 2 000 chars). Returns MP3 buffer.
+// Retries on transient errors (timeouts, 5xx) with exponential backoff.
 // ---------------------------------------------------------------------------
 async function ttsChunk(text: string): Promise<Buffer> {
   const apiKey = getDeepgramApiKey();
-
   const url = `${DEEPGRAM_API_URL}?model=${DEEPGRAM_MODEL}&encoding=mp3`;
 
-  const response = await fetch(url, {
-    method: "POST",
-    headers: {
-      Authorization: `Token ${apiKey}`,
-      "Content-Type": "text/plain",
-    },
-    body: text,
-    signal: AbortSignal.timeout(30_000),
-  });
+  let lastError: Error | null = null;
 
-  if (!response.ok) {
-    let errorDetail = response.statusText;
+  for (let attempt = 0; attempt <= TTS_MAX_RETRIES; attempt++) {
     try {
-      const errBody = await response.json();
-      errorDetail = JSON.stringify(errBody);
-    } catch {
-      // body wasn't JSON — use statusText
+      const response = await fetch(url, {
+        method: "POST",
+        headers: {
+          Authorization: `Token ${apiKey}`,
+          "Content-Type": "text/plain",
+        },
+        body: text,
+        signal: AbortSignal.timeout(TTS_TIMEOUT_MS),
+      });
+
+      if (!response.ok) {
+        let errorDetail = response.statusText;
+        try {
+          const errBody = await response.json();
+          errorDetail = JSON.stringify(errBody);
+        } catch {
+          // body wasn't JSON — use statusText
+        }
+
+        // Retry on 5xx server errors, throw immediately on 4xx
+        if (response.status >= 500 && attempt < TTS_MAX_RETRIES) {
+          lastError = new Error(`Deepgram TTS failed (${response.status}): ${errorDetail}`);
+          await sleep(1000 * 2 ** attempt); // 1s, 2s backoff
+          continue;
+        }
+
+        throw new Error(`Deepgram TTS failed (${response.status}): ${errorDetail}`);
+      }
+
+      return Buffer.from(await response.arrayBuffer());
+    } catch (err) {
+      lastError = err instanceof Error ? err : new Error(String(err));
+
+      // Retry on timeout or network errors, throw on everything else
+      const isTransient =
+        lastError.name === "TimeoutError" ||
+        lastError.name === "AbortError" ||
+        lastError.message.includes("fetch failed");
+
+      if (isTransient && attempt < TTS_MAX_RETRIES) {
+        await sleep(1000 * 2 ** attempt); // 1s, 2s backoff
+        continue;
+      }
+
+      throw lastError;
     }
-    throw new Error(`Deepgram TTS failed (${response.status}): ${errorDetail}`);
   }
 
-  return Buffer.from(await response.arrayBuffer());
+  throw lastError ?? new Error("Deepgram TTS failed after retries");
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 // ---------------------------------------------------------------------------
