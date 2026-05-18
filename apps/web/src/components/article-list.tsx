@@ -47,7 +47,7 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { useAudio, articleToPlayable } from "@/contexts/audio-context";
+import { useAudio, articleToPlayable, PlayableItem } from "@/contexts/audio-context";
 import { TagMenu } from "./tag-menu";
 import api from "@/utils/api";
 import { createClient } from "@/utils/supabase/client";
@@ -62,9 +62,10 @@ type Article = {
   id: string;
   title: string;
   original_url: string;
-  status: "queued" | "processing" | "completed" | "failed";
+  status: "queued" | "processing" | "summarizing" | "completed" | "failed";
   created_at: string;
   audio_url?: string;
+  summary_text?: string;
   clean_text?: string;
   excerpt?: string;
   image_url?: string;
@@ -133,14 +134,26 @@ function applySort(articles: Article[], sort: SortType): Article[] {
       return copy.sort((a, b) => a.title.localeCompare(b.title));
     case "newest":
     default:
-      // Prefer sort_order when available (manual DnD order)
+      // Use manual DnD order when both articles have sort_order,
+      // otherwise fall back to created_at (newest first).
       return copy.sort((a, b) => {
+        const aTime = new Date(a.created_at).getTime();
+        const bTime = new Date(b.created_at).getTime();
+
+        // If both have sort_order, use it (DnD manual ordering)
         if (a.sort_order != null && b.sort_order != null) {
-          return a.sort_order - b.sort_order;
+          const diff = b.sort_order - a.sort_order;
+          if (diff !== 0) return diff;
+          // Tie-break by created_at
+          return bTime - aTime;
         }
-        return (
-          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-        );
+
+        // Articles with sort_order come before those without
+        if (a.sort_order != null) return -1;
+        if (b.sort_order != null) return 1;
+
+        // Both lack sort_order — newest first
+        return bTime - aTime;
       });
   }
 }
@@ -200,6 +213,14 @@ function StatusBadge({ status }: { status: Article["status"] }) {
       <Badge variant="secondary" className="text-[10px] px-1.5 py-0.5 gap-1">
         <Loader2 className="h-2.5 w-2.5 animate-spin" />
         Processing
+      </Badge>
+    );
+  }
+  if (status === "summarizing") {
+    return (
+      <Badge variant="secondary" className="text-[10px] px-1.5 py-0.5 gap-1">
+        <Loader2 className="h-2.5 w-2.5 animate-spin" />
+        Summarizing
       </Badge>
     );
   }
@@ -361,6 +382,7 @@ interface SortableArticleProps {
   onRefreshTags: () => void;
   isActive: boolean;
   isCurrentlyPlaying: boolean;
+  isStreaming: boolean;
   onPlay: (article: Article) => void;
   onNavigate: (id: string) => void;
   onArchive: (id: string) => void;
@@ -377,6 +399,7 @@ function SortableArticle({
   onRefreshTags,
   isActive,
   isCurrentlyPlaying,
+  isStreaming,
   onPlay,
   onNavigate,
   onArchive,
@@ -400,8 +423,9 @@ function SortableArticle({
   };
 
   const hasAudio = !!article.audio_url;
+  const hasSummary = !!article.summary_text;
   const isCompleted = article.status === "completed";
-  const canPlay = hasAudio && isCompleted;
+  const canPlay = (hasAudio && isCompleted) || hasSummary;
 
   const domain = getDomain(article.original_url);
   const readingTime = getReadingTime(article.word_count);
@@ -504,9 +528,12 @@ function SortableArticle({
               e.stopPropagation();
               onPlay(article);
             }}
-            aria-label={isCurrentlyPlaying ? "Pause" : "Play"}
+            disabled={isStreaming}
+            aria-label={isStreaming ? "Loading audio" : isCurrentlyPlaying ? "Pause" : "Play"}
           >
-            {isCurrentlyPlaying ? (
+            {isStreaming ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : isCurrentlyPlaying ? (
               <Pause className="h-4 w-4 fill-current" />
             ) : (
               <Play className="h-4 w-4 fill-current" />
@@ -606,6 +633,7 @@ export function ArticleList({
   const [isLoading, setIsLoading] = useState(true);
   const [filter, setFilter] = useState<FilterType>("all");
   const [sort, setSort] = useState<SortType>("newest");
+  const [streamingArticleId, setStreamingArticleId] = useState<string | null>(null);
 
   const { play, pause, isPlaying, currentItem } = useAudio();
 
@@ -643,7 +671,7 @@ export function ArticleList({
   // in "queued" or "processing" state.
   useEffect(() => {
     const hasPending = articles.some(
-      (a) => a.status === "queued" || a.status === "processing"
+      (a) => a.status === "queued" || a.status === "processing" || a.status === "summarizing"
     );
     if (!hasPending) return;
     const interval = setInterval(fetchArticles, 5_000);
@@ -758,14 +786,46 @@ export function ArticleList({
   );
 
   const handlePlay = useCallback(
-    (article: Article) => {
-      const playable = articleToPlayable(article);
-      if (!playable) return;
+    async (article: Article) => {
+      // Toggle pause/resume if this article is already the current track
+      if (currentItem?.id === article.id) {
+        if (isPlaying) {
+          pause();
+        } else {
+          play(currentItem);
+        }
+        return;
+      }
 
-      if (currentItem?.id === article.id && isPlaying) {
-        pause();
-      } else {
+      // If cached audio exists, play directly
+      const playable = articleToPlayable(article);
+      if (playable) {
         play(playable);
+        return;
+      }
+
+      // No cached audio but summary exists — stream from API
+      if (article.summary_text) {
+        setStreamingArticleId(article.id);
+        try {
+          const res = await api.get(`/audio/articles/${article.id}/stream`, {
+            responseType: "blob",
+          });
+          const blobUrl = URL.createObjectURL(res.data);
+          const streamedItem: PlayableItem = {
+            id: article.id,
+            title: article.title || "Untitled",
+            source: getDomain(article.original_url),
+            audioUrl: blobUrl,
+            imageUrl: article.image_url,
+            type: "article",
+          };
+          play(streamedItem);
+        } catch (err) {
+          console.error("Streaming audio failed:", err);
+        } finally {
+          setStreamingArticleId(null);
+        }
       }
     },
     [play, pause, isPlaying, currentItem]
@@ -957,6 +1017,7 @@ export function ArticleList({
                     onRefreshTags={fetchTags}
                     isActive={isActive}
                     isCurrentlyPlaying={isCurrentlyPlaying}
+                    isStreaming={streamingArticleId === article.id}
                     onPlay={handlePlay}
                     onNavigate={handleNavigate}
                     onArchive={handleArchive}

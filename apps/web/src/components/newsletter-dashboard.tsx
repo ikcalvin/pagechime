@@ -12,9 +12,9 @@ import {
 import { useAudio, type PlayableItem } from "@/contexts/audio-context";
 import api from "@/utils/api";
 
-// ---------------------------------------------------------------------------
+// -------------------------------------------------------------------------
 // Newsletter → PlayableItem adapter
-// ---------------------------------------------------------------------------
+// -------------------------------------------------------------------------
 
 function issueToPlayable(issue: NewsletterIssue): PlayableItem | null {
   if (!issue.audio_url) return null;
@@ -39,9 +39,9 @@ function briefingToPlayable(briefing: BriefingData): PlayableItem | null {
   };
 }
 
-// ---------------------------------------------------------------------------
+// -------------------------------------------------------------------------
 // Main component
-// ---------------------------------------------------------------------------
+// -------------------------------------------------------------------------
 
 export function NewsletterDashboard() {
   const router = useRouter();
@@ -52,9 +52,9 @@ export function NewsletterDashboard() {
   const [issues, setIssues] = useState<NewsletterIssue[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // -------------------------------------------------------------------------
+  // -----------------------------------------------------------------------
   // Fetch data
-  // -------------------------------------------------------------------------
+  // -----------------------------------------------------------------------
 
   const fetchData = useCallback(async () => {
     try {
@@ -70,8 +70,12 @@ export function NewsletterDashboard() {
 
       if (issuesRes.status === "fulfilled") {
         const data = issuesRes.value.data;
-        // Handle both { data: [...] } and plain array responses
-        setIssues(Array.isArray(data) ? data : data.data ?? []);
+        // Handle { issues: [...] }, { data: [...] }, and plain array responses
+        setIssues(
+          Array.isArray(data)
+            ? data
+            : data.issues ?? data.data ?? []
+        );
       }
     } catch {
       // Endpoints may not exist yet — gracefully show empty states
@@ -84,9 +88,9 @@ export function NewsletterDashboard() {
     fetchData();
   }, [fetchData]);
 
-  // -------------------------------------------------------------------------
+  // -----------------------------------------------------------------------
   // Playback handlers
-  // -------------------------------------------------------------------------
+  // -----------------------------------------------------------------------
 
   const isBriefingPlaying =
     isPlaying && briefing !== null && currentItem?.id === briefing.id;
@@ -112,9 +116,9 @@ export function NewsletterDashboard() {
     [router]
   );
 
-  // -------------------------------------------------------------------------
+  // -----------------------------------------------------------------------
   // Loading state
-  // -------------------------------------------------------------------------
+  // -----------------------------------------------------------------------
 
   if (loading) {
     return (
@@ -124,9 +128,9 @@ export function NewsletterDashboard() {
     );
   }
 
-  // -------------------------------------------------------------------------
+  // -----------------------------------------------------------------------
   // Render
-  // -------------------------------------------------------------------------
+  // -----------------------------------------------------------------------
 
   return (
     <div className="space-y-6">

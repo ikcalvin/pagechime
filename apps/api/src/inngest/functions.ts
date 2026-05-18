@@ -1,11 +1,11 @@
 import { inngest } from "./client";
 import { supabaseAdmin } from "../lib/supabase";
 import { openai } from "../lib/openai";
-import { r2, R2_BUCKET_NAME } from "../lib/r2";
 import { JSDOM } from "jsdom";
 import { Readability } from "@mozilla/readability";
-import { Upload } from "@aws-sdk/lib-storage";
 import { validateUrl } from "../lib/url-validator";
+import { generateAndUploadTts } from "../lib/tts";
+import { sanitizeArticleText } from "../lib/sanitize-text";
 
 export const processArticle = inngest.createFunction(
   {
@@ -28,9 +28,17 @@ export const processArticle = inngest.createFunction(
       // Validate the URL against SSRF before fetching
       await validateUrl(url);
 
+      const fetchHeaders = {
+        "User-Agent":
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36",
+        Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        "Accept-Language": "en-US,en;q=0.5",
+      };
+
       const response = await fetch(url, {
         redirect: "manual",
         signal: AbortSignal.timeout(15_000),
+        headers: fetchHeaders,
       });
 
       // If the server responded with a redirect, validate the target before following
@@ -47,6 +55,7 @@ export const processArticle = inngest.createFunction(
         const redirectResponse = await fetch(resolvedRedirect, {
           redirect: "manual",
           signal: AbortSignal.timeout(15_000),
+          headers: fetchHeaders,
         });
         if (!redirectResponse.ok) {
           throw new Error(`Failed to fetch redirected URL: ${redirectResponse.statusText}`);
@@ -65,8 +74,9 @@ export const processArticle = inngest.createFunction(
           throw new Error("Failed to parse article content");
         }
 
-        // Compute word count from plain text
-        const wordCount = article.textContent.trim().split(/\s+/).length;
+        // Sanitize extracted text — remove image credits, captions, social noise
+        const sanitizedText = sanitizeArticleText(article.textContent);
+        const wordCount = sanitizedText.trim().split(/\s+/).length;
 
         const { error } = await supabaseAdmin
           .from("articles")
@@ -83,7 +93,7 @@ export const processArticle = inngest.createFunction(
 
         return {
           title: article.title,
-          text: article.textContent,
+          text: sanitizedText,
         };
       }
 
@@ -105,8 +115,9 @@ export const processArticle = inngest.createFunction(
         throw new Error("Failed to parse article content");
       }
 
-      // Compute word count from plain text
-      const wordCount = article.textContent.trim().split(/\s+/).length;
+      // Sanitize extracted text — remove image credits, captions, social noise
+      const sanitizedText = sanitizeArticleText(article.textContent);
+      const wordCount = sanitizedText.trim().split(/\s+/).length;
 
       const { error } = await supabaseAdmin
         .from("articles")
@@ -123,11 +134,51 @@ export const processArticle = inngest.createFunction(
 
       return {
         title: article.title,
-        text: article.textContent,
+        text: sanitizedText,
       };
     });
 
-    // Step 2: Check for existing audio (deduplication by original_url)
+    // Step 2: Summarize with GPT-4o-mini
+    const { summaryText, summaryWordCount } = await step.run("summarize", async () => {
+      await supabaseAdmin
+        .from("articles")
+        .update({ status: "summarizing" })
+        .eq("id", articleId);
+
+      // Cap input to 8000 characters (cost guardrail)
+      const cappedText = scrapedData.text.slice(0, 8000);
+
+      const response = await openai.chat.completions.create({
+        model: "gpt-4o-mini",
+        messages: [
+          {
+            role: "system",
+            content:
+              "You are a concise news summarizer. Create a 150-250 word summary preserving key facts, names, numbers, and arguments. Write in third person.",
+          },
+          {
+            role: "user",
+            content: cappedText,
+          },
+        ],
+        max_tokens: 500,
+        temperature: 0.3,
+      });
+
+      const summaryText = response.choices[0].message.content ?? "";
+      const summaryWordCount = summaryText.trim().split(/\s+/).filter((t) => t.length > 0).length;
+
+      const { error } = await supabaseAdmin
+        .from("articles")
+        .update({ summary_text: summaryText, summary_word_count: summaryWordCount })
+        .eq("id", articleId);
+
+      if (error) throw new Error(`Failed to update article with summary: ${error.message}`);
+
+      return { summaryText, summaryWordCount };
+    });
+
+    // Step 3: Check for existing audio (deduplication by original_url)
     const existingAudioUrl = await step.run("check-audio-dedup", async () => {
       const { data, error } = await supabaseAdmin
         .from("articles")
@@ -146,44 +197,17 @@ export const processArticle = inngest.createFunction(
       return data?.audio_url ?? null;
     });
 
-    // Step 3: Generate TTS & upload (or reuse existing audio)
+    // Step 4: Generate TTS from summary & upload (or reuse existing audio)
     const audioUrl = await step.run("generate-and-upload-audio", async () => {
-      // Reuse existing audio if a duplicate was found
       if (existingAudioUrl) {
         return existingAudioUrl;
       }
 
-      const textToSpeak = scrapedData.text.slice(0, 4096);
-
-      const mp3 = await openai.audio.speech.create({
-        model: "tts-1",
-        voice: "alloy",
-        input: textToSpeak,
-      });
-
       const key = `${userId}/${articleId}.mp3`;
-
-      // Stream directly to R2 using multipart upload (no full buffer in memory)
-      // Convert the response body to a buffer stream for S3 compatibility
-      const audioBuffer = Buffer.from(await mp3.arrayBuffer());
-
-      const upload = new Upload({
-        client: r2,
-        params: {
-          Bucket: R2_BUCKET_NAME,
-          Key: key,
-          Body: audioBuffer,
-          ContentType: "audio/mpeg",
-        },
-      });
-
-      await upload.done();
-
-      const publicDomain = process.env.R2_PUBLIC_DOMAIN;
-      return `${publicDomain}/${key}`;
+      return generateAndUploadTts(summaryText, key);
     });
 
-    // Step 4: Finalize
+    // Step 5: Finalize
     await step.run("finalize-article", async () => {
       const { error } = await supabaseAdmin
         .from("articles")
