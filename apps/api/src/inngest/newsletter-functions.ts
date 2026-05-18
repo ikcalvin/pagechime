@@ -142,22 +142,7 @@ export const processNewsletter = inngest.createFunction(
       return audioUrl;
     });
 
-    // Step 5: Generate TTS audio for the full clean text
-    const fullAudioUrl = await step.run("generate-full-audio", async () => {
-      const key = `newsletters/${userId}/${issueId}-full.mp3`;
-      const fullAudioUrlValue = await generateAndUploadTts(cleanText, key);
-
-      const { error: updateError } = await supabaseAdmin
-        .from("newsletter_issues")
-        .update({ full_audio_url: fullAudioUrlValue })
-        .eq("id", issueId);
-
-      if (updateError) throw new Error(`Failed to update issue with full audio URL: ${updateError.message}`);
-
-      return fullAudioUrlValue;
-    });
-
-    // Step 6: Finalize — tark ready and update source's last_received_at
+    // Step 5: Finalize — mark ready and update source's last_received_at
     await step.run("finalize", async () => {
       const { error: issueError } = await supabaseAdmin
         .from("newsletter_issues")
@@ -174,6 +159,6 @@ export const processNewsletter = inngest.createFunction(
       if (sourceError) throw new Error(`Failed to update source last_received_at: ${sourceError.message}`);
     });
 
-    return { success: true, issueId, summaryAudioUrl, fullAudioUrl };
+    return { success: true, issueId, summaryAudioUrl };
   }
 );
