@@ -28,7 +28,23 @@ function getDeepgramApiKey(): string {
 function splitTextIntoChunks(text: string, maxChars: number): string[] {
   if (text.length <= maxChars) return [text];
 
-  const sentences = text.match(/[^.!?]+[.!?]+[\s]*/g) || [text];
+  const matched = text.match(/[^.!?]+[.!?]+[\s]*/g) || [];
+  const sentences: string[] = [...matched];
+
+  // Capture any trailing text after the last sentence-ending punctuation.
+  // Without this, "...and that's the end" (no final period) gets silently dropped.
+  const matchedLength = matched.join("").length;
+  if (matchedLength < text.length) {
+    const remainder = text.slice(matchedLength).trim();
+    if (remainder.length > 0) {
+      sentences.push(remainder);
+    }
+  }
+
+  // If no sentences were found at all, treat entire text as one block
+  if (sentences.length === 0) {
+    sentences.push(text);
+  }
   const chunks: string[] = [];
   let current = "";
 
@@ -141,5 +157,8 @@ export async function generateAndUploadTts(
   await upload.done();
 
   const publicDomain = process.env.R2_PUBLIC_DOMAIN;
+  if (!publicDomain) {
+    throw new Error("Missing R2_PUBLIC_DOMAIN environment variable");
+  }
   return `${publicDomain}/${r2Key}`;
 }
