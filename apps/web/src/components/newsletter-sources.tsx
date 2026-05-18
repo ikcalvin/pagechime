@@ -15,9 +15,9 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import api from "@/utils/api";
 
-// ---------------------------------------------------------------------------
+// -------------------------------------------------------------------------
 // Types
-// ---------------------------------------------------------------------------
+// -------------------------------------------------------------------------
 
 type NewsletterSource = {
   id: string;
@@ -33,9 +33,9 @@ type ForwardingAddress = {
   email: string;
 };
 
-// ---------------------------------------------------------------------------
+// -------------------------------------------------------------------------
 // Helpers
-// ---------------------------------------------------------------------------
+// -------------------------------------------------------------------------
 
 function getInitials(name: string): string {
   return name
@@ -63,9 +63,9 @@ function colorForSource(sourceId: string): string {
   return avatarColors[Math.abs(hash) % avatarColors.length];
 }
 
-// ---------------------------------------------------------------------------
+// -------------------------------------------------------------------------
 // Component
-// ---------------------------------------------------------------------------
+// -------------------------------------------------------------------------
 
 export function NewsletterSources() {
   const router = useRouter();
@@ -77,9 +77,9 @@ export function NewsletterSources() {
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
 
-  // -------------------------------------------------------------------------
+  // -----------------------------------------------------------------------
   // Fetch data
-  // -------------------------------------------------------------------------
+  // -----------------------------------------------------------------------
 
   const fetchData = useCallback(async () => {
     try {
@@ -91,11 +91,14 @@ export function NewsletterSources() {
 
       if (sourcesRes.status === "fulfilled") {
         const data = sourcesRes.value.data;
-        setSources(Array.isArray(data) ? data : data.data ?? []);
+        setSources(Array.isArray(data) ? data : data.sources ?? data.data ?? []);
       }
 
       if (addressRes.status === "fulfilled") {
-        setForwardingAddress(addressRes.value.data);
+        const addrData = addressRes.value.data;
+        if (addrData?.forwardingAddress) {
+          setForwardingAddress({ email: addrData.forwardingAddress });
+        }
       }
     } catch {
       // Endpoints may not exist yet
@@ -108,9 +111,9 @@ export function NewsletterSources() {
     fetchData();
   }, [fetchData]);
 
-  // -------------------------------------------------------------------------
+  // -----------------------------------------------------------------------
   // Actions
-  // -------------------------------------------------------------------------
+  // -----------------------------------------------------------------------
 
   const handleCopyAddress = useCallback(async () => {
     if (!forwardingAddress) return;
@@ -153,9 +156,9 @@ export function NewsletterSources() {
     []
   );
 
-  // -------------------------------------------------------------------------
+  // -----------------------------------------------------------------------
   // Loading state
-  // -------------------------------------------------------------------------
+  // -----------------------------------------------------------------------
 
   if (loading) {
     return (
@@ -165,9 +168,9 @@ export function NewsletterSources() {
     );
   }
 
-  // -------------------------------------------------------------------------
+  // -----------------------------------------------------------------------
   // Render
-  // -------------------------------------------------------------------------
+  // -----------------------------------------------------------------------
 
   return (
     <div className="space-y-8">
