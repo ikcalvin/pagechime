@@ -1,8 +1,6 @@
 import { inngest } from "./client";
 import { supabaseAdmin } from "../lib/supabase";
-import { openai } from "../lib/openai";
-import { r2, R2_BUCKET_NAME } from "../lib/r2";
-import { Upload } from "@aws-sdk/lib-storage";
+import { generateAndUploadTts } from "../lib/tts";
 
 type BriefingGenerateEvent = {
   name: "app/briefing.generate";
@@ -188,39 +186,13 @@ export const generateDailyBriefing = inngest.createFunction(
 
       let combined = parts.join("\n\n");
 
-      // Cap at 4096 characters for TTS
-      if (combined.length > 4096) {
-        combined = combined.slice(0, 4093) + "...";
-      }
-
       return combined;
     });
 
     // Step 5: Generate audio and upload to R2
     const audioUrl = await step.run("generate-briefing-audio", async () => {
-      const response = await openai.audio.speech.create({
-        model: "tts-1",
-        voice: "alloy",
-        input: script,
-      });
-
-      const audioBuffer = Buffer.from(await response.arrayBuffer());
       const r2Key = `briefings/${userId}/${date}.mp3`;
-
-      const upload = new Upload({
-        client: r2,
-        params: {
-          Bucket: R2_BUCKET_NAME,
-          Key: r2Key,
-          Body: audioBuffer,
-          ContentType: "audio/mpeg",
-        },
-      });
-
-      await upload.done();
-
-      const publicDomain = process.env.R2_PUBLIC_DOMAIN;
-      return `${publicDomain}/${r2Key}`;
+      return generateAndUploadTts(script, r2Key);
     });
 
     // Step 6: Finalize the briefing row

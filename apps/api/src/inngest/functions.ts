@@ -1,11 +1,9 @@
 import { inngest } from "./client";
 import { supabaseAdmin } from "../lib/supabase";
-import { openai } from "../lib/openai";
-import { r2, R2_BUCKET_NAME } from "../lib/r2";
 import { JSDOM } from "jsdom";
 import { Readability } from "@mozilla/readability";
-import { Upload } from "@aws-sdk/lib-storage";
 import { validateUrl } from "../lib/url-validator";
+import { generateAndUploadTts } from "../lib/tts";
 
 export const processArticle = inngest.createFunction(
   {
@@ -153,34 +151,8 @@ export const processArticle = inngest.createFunction(
         return existingAudioUrl;
       }
 
-      const textToSpeak = scrapedData.text.slice(0, 4096);
-
-      const mp3 = await openai.audio.speech.create({
-        model: "tts-1",
-        voice: "alloy",
-        input: textToSpeak,
-      });
-
       const key = `${userId}/${articleId}.mp3`;
-
-      // Stream directly to R2 using multipart upload (no full buffer in memory)
-      // Convert the response body to a buffer stream for S3 compatibility
-      const audioBuffer = Buffer.from(await mp3.arrayBuffer());
-
-      const upload = new Upload({
-        client: r2,
-        params: {
-          Bucket: R2_BUCKET_NAME,
-          Key: key,
-          Body: audioBuffer,
-          ContentType: "audio/mpeg",
-        },
-      });
-
-      await upload.done();
-
-      const publicDomain = process.env.R2_PUBLIC_DOMAIN;
-      return `${publicDomain}/${key}`;
+      return generateAndUploadTts(scrapedData.text, key);
     });
 
     // Step 4: Finalize

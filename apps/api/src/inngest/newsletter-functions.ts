@@ -1,9 +1,8 @@
 import { inngest } from "./client";
 import { supabaseAdmin } from "../lib/supabase";
 import { openai } from "../lib/openai";
-import { r2, R2_BUCKET_NAME } from "../lib/r2";
-import { Upload } from "@aws-sdk/lib-storage";
 import { parseNewsletterHtml } from "../lib/email-parser";
+import { generateAndUploadTts } from "../lib/tts";
 
 const MAX_DAILY_NEWSLETTERS = 20;
 
@@ -125,30 +124,8 @@ export const processNewsletter = inngest.createFunction(
         .update({ status: "generating_audio" })
         .eq("id", issueId);
 
-      const mp3 = await openai.audio.speech.create({
-        model: "tts-1",
-        voice: "alloy",
-        input: summaryText.slice(0, 4096),
-      });
-
       const key = `newsletters/${userId}/${issueId}.mp3`;
-
-      const audioBuffer = Buffer.from(await mp3.arrayBuffer());
-
-      const upload = new Upload({
-        client: r2,
-        params: {
-          Bucket: R2_BUCKET_NAME,
-          Key: key,
-          Body: audioBuffer,
-          ContentType: "audio/mpeg",
-        },
-      });
-
-      await upload.done();
-
-      const publicDomain = process.env.R2_PUBLIC_DOMAIN;
-      const audioUrl = `${publicDomain}/${key}`;
+      const audioUrl = await generateAndUploadTts(summaryText, key);
 
       const { error: updateError } = await supabaseAdmin
         .from("newsletter_issues")
@@ -162,30 +139,8 @@ export const processNewsletter = inngest.createFunction(
 
     // Step 5: Generate TTS audio for the full clean text
     const fullAudioUrl = await step.run("generate-full-audio", async () => {
-      const mp3 = await openai.audio.speech.create({
-        model: "tts-1",
-        voice: "alloy",
-        input: cleanText.slice(0, 4096),
-      });
-
       const key = `newsletters/${userId}/${issueId}-full.mp3`;
-
-      const audioBuffer = Buffer.from(await mp3.arrayBuffer());
-
-      const upload = new Upload({
-        client: r2,
-        params: {
-          Bucket: R2_BUCKET_NAME,
-          Key: key,
-          Body: audioBuffer,
-          ContentType: "audio/mpeg",
-        },
-      });
-
-      await upload.done();
-
-      const publicDomain = process.env.R2_PUBLIC_DOMAIN;
-      const fullAudioUrlValue = `${publicDomain}/${key}`;
+      const fullAudioUrlValue = await generateAndUploadTts(cleanText, key);
 
       const { error: updateError } = await supabaseAdmin
         .from("newsletter_issues")
@@ -197,7 +152,7 @@ export const processNewsletter = inngest.createFunction(
       return fullAudioUrlValue;
     });
 
-    // Step 6: Finalize — mark ready and update source's last_received_at
+    // Step 6: Finalize — tark ready and update source's last_received_at
     await step.run("finalize", async () => {
       const { error: issueError } = await supabaseAdmin
         .from("newsletter_issues")
