@@ -3,6 +3,7 @@ import { supabaseAdmin } from "../lib/supabase";
 import { openai } from "../lib/openai";
 import { parseNewsletterHtml } from "../lib/email-parser";
 import { generateAndUploadTts } from "../lib/tts";
+import { sanitizeArticleText } from "../lib/sanitize-text";
 
 const MAX_DAILY_NEWSLETTERS = 20;
 
@@ -38,7 +39,11 @@ export const processNewsletter = inngest.createFunction(
         .update({ status: "parsing" })
         .eq("id", issueId);
 
-      const { cleanText, wordCount } = parseNewsletterHtml(issue.original_html);
+      const parsed = parseNewsletterHtml(issue.original_html);
+
+      // Sanitize parsed text — remove image credits, captions, social noise
+      const cleanText = sanitizeArticleText(parsed.cleanText);
+      const wordCount = cleanText.trim().split(/\s+/).filter((t: string) => t.length > 0).length;
 
       const { error: updateError } = await supabaseAdmin
         .from("newsletter_issues")

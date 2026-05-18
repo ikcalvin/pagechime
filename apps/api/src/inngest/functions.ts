@@ -4,6 +4,7 @@ import { JSDOM } from "jsdom";
 import { Readability } from "@mozilla/readability";
 import { validateUrl } from "../lib/url-validator";
 import { generateAndUploadTts } from "../lib/tts";
+import { sanitizeArticleText } from "../lib/sanitize-text";
 
 export const processArticle = inngest.createFunction(
   {
@@ -63,8 +64,9 @@ export const processArticle = inngest.createFunction(
           throw new Error("Failed to parse article content");
         }
 
-        // Compute word count from plain text
-        const wordCount = article.textContent.trim().split(/\s+/).length;
+        // Sanitize extracted text — remove image credits, captions, social noise
+        const sanitizedText = sanitizeArticleText(article.textContent);
+        const wordCount = sanitizedText.trim().split(/\s+/).length;
 
         const { error } = await supabaseAdmin
           .from("articles")
@@ -81,7 +83,7 @@ export const processArticle = inngest.createFunction(
 
         return {
           title: article.title,
-          text: article.textContent,
+          text: sanitizedText,
         };
       }
 
@@ -103,8 +105,9 @@ export const processArticle = inngest.createFunction(
         throw new Error("Failed to parse article content");
       }
 
-      // Compute word count from plain text
-      const wordCount = article.textContent.trim().split(/\s+/).length;
+      // Sanitize extracted text — remove image credits, captions, social noise
+      const sanitizedText = sanitizeArticleText(article.textContent);
+      const wordCount = sanitizedText.trim().split(/\s+/).length;
 
       const { error } = await supabaseAdmin
         .from("articles")
@@ -121,7 +124,7 @@ export const processArticle = inngest.createFunction(
 
       return {
         title: article.title,
-        text: article.textContent,
+        text: sanitizedText,
       };
     });
 
