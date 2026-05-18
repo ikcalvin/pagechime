@@ -134,14 +134,26 @@ function applySort(articles: Article[], sort: SortType): Article[] {
       return copy.sort((a, b) => a.title.localeCompare(b.title));
     case "newest":
     default:
-      // Prefer sort_order when available (manual DnD order)
+      // Use manual DnD order when both articles have sort_order,
+      // otherwise fall back to created_at (newest first).
       return copy.sort((a, b) => {
+        const aTime = new Date(a.created_at).getTime();
+        const bTime = new Date(b.created_at).getTime();
+
+        // If both have sort_order, use it (DnD manual ordering)
         if (a.sort_order != null && b.sort_order != null) {
-          return a.sort_order - b.sort_order;
+          const diff = b.sort_order - a.sort_order;
+          if (diff !== 0) return diff;
+          // Tie-break by created_at
+          return bTime - aTime;
         }
-        return (
-          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-        );
+
+        // Articles with sort_order come before those without
+        if (a.sort_order != null) return -1;
+        if (b.sort_order != null) return 1;
+
+        // Both lack sort_order — newest first
+        return bTime - aTime;
       });
   }
 }
