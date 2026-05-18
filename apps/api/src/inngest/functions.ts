@@ -28,9 +28,17 @@ export const processArticle = inngest.createFunction(
       // Validate the URL against SSRF before fetching
       await validateUrl(url);
 
+      const fetchHeaders = {
+        "User-Agent":
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36",
+        Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        "Accept-Language": "en-US,en;q=0.5",
+      };
+
       const response = await fetch(url, {
         redirect: "manual",
         signal: AbortSignal.timeout(15_000),
+        headers: fetchHeaders,
       });
 
       // If the server responded with a redirect, validate the target before following
@@ -47,6 +55,7 @@ export const processArticle = inngest.createFunction(
         const redirectResponse = await fetch(resolvedRedirect, {
           redirect: "manual",
           signal: AbortSignal.timeout(15_000),
+          headers: fetchHeaders,
         });
         if (!redirectResponse.ok) {
           throw new Error(`Failed to fetch redirected URL: ${redirectResponse.statusText}`);
