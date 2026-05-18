@@ -136,7 +136,7 @@ app.patch("/api/articles/:id", requireAuth, validateBody(updateArticleSchema), u
 // We fetch clean_text and truncate server-side to keep payloads small
 // (PostgREST .select() does not support SQL functions like substr).
 const ARTICLE_LIST_COLUMNS =
-  "id, user_id, original_url, title, status, audio_url, image_url, is_archived, is_deleted, collection_id, sort_order, word_count, created_at, clean_text, tags(*)";
+  "id, user_id, original_url, title, status, audio_url, image_url, is_archived, is_deleted, collection_id, sort_order, word_count, summary_text, created_at, clean_text, tags(*)";
 
 app.get("/api/articles", requireAuth, async (req, res) => {
   try {
