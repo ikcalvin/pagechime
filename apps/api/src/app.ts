@@ -10,6 +10,7 @@ import dotenv from "dotenv";
 import collectionsRouter from "./routes/collections";
 import webhooksRouter from "./routes/webhooks";
 import newsletterRouter from "./routes/newsletter";
+import audioStreamRouter from "./routes/audio-stream";
 import { sanitizeSearchTerm } from "./lib/sanitize";
 import { initSentry, Sentry } from "./lib/sentry";
 import { requireAuth } from "./middleware/auth";
@@ -365,6 +366,9 @@ app.use("/api/collections", requireAuth, collectionsRouter);
 
 // Newsletter API (authenticated)
 app.use("/api/newsletters", requireAuth, newsletterRouter);
+
+// Streaming audio API (authenticated)
+app.use("/api/audio", requireAuth, audioStreamRouter);
 
 // Webhooks API (uses its own shared-secret auth, not requireAuth)
 app.use("/api/webhooks", webhooksRouter);
